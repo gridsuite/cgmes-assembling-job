@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS cgmes_assembling.dependencies (
     PRIMARY KEY (uuid)
 );
 
+CREATE TABLE IF NOT EXISTS merge_orchestrator.boundaries (
+    id text,
+    boundary blob,
+    filename text,
+    PRIMARY KEY (id)
+);
 
 
 

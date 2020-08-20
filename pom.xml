@@ -50,7 +50,7 @@
         <logback.version>1.2.3</logback.version>
         <sshj.version>0.29.0</sshj.version>
         <cassandra.driver.version>3.6.0</cassandra.driver.version>
-        <powsyblcore.version>3.6.0-SNAPSHOT</powsyblcore.version>
+        <powsyblcore.version>3.5.0</powsyblcore.version>
         <embedded-cassandra.version>3.0.3</embedded-cassandra.version>
         <junit.version>4.13</junit.version>
         <fake.sftp.server.version>2.0.1</fake.sftp.server.version>
@@ -68,12 +68,6 @@
             <artifactId>powsybl-cgmes-model</artifactId>
             <version>${powsyblcore.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-commons</artifactId>
-            <version>${powsyblcore.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -96,12 +90,6 @@
         </dependency>
 
         <!-- Runtime dependencies -->
-        <dependency>
-            <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-config-classic</artifactId>
-            <version>${powsyblcore.version}</version>
-            <scope>runtime</scope>
-        </dependency>
 
         <!-- Test dependencies -->
         <dependency>

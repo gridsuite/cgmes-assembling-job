@@ -6,9 +6,9 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import com.powsybl.cgmes.model.FullModel;
 import com.powsybl.commons.config.ModuleConfig;
 import com.powsybl.commons.config.PlatformConfig;
+import org.gridsuite.cgmes.assembling.fullmodel.FullModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +22,7 @@ import java.util.zip.ZipInputStream;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
- * @author Nicolas Noir <nicolas.noir at rte-france.com>
+ * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
 public final class SftpProfilesAcquisitionJob {
 
@@ -77,7 +77,7 @@ public final class SftpProfilesAcquisitionJob {
             for (Path file : filesToAcquire) {
                 if (!cgmesAssemblingLogger.isHandledFile(file.getFileName().toString(), sftpServerLabel)) {
                     LOGGER.info("Handling file '{}'...", file);
-                    //Download the file
+                    // Download the file
                     TransferableFile acquiredFile = sftpConnection.getFile(file.toString());
 
                     try (ZipInputStream zipInputStream = CgmesUtils.getZipInputStream(acquiredFile.getData());
@@ -96,9 +96,26 @@ public final class SftpProfilesAcquisitionJob {
                 if (!cgmesAssemblingLogger.isImportedFile(file.getFileName().toString(), sftpServerLabel)) {
                     LOGGER.info("SV file '{}'...", file);
                     String uuid = cgmesAssemblingLogger.getUuidByFileName(file.getFileName().toString(), sftpServerLabel);
-                    if (CgmesUtils.isDependenciesTreeResolved(uuid, cgmesAssemblingLogger)) {
-                        TransferableFile assembledFile = CgmesUtils.prepareFinalZip(file.getFileName().toString(), sftpServerLabel, cgmesAssemblingLogger, casesDirectory, sftpConnection);
-                        // Assemble files then push a zip to the case server
+
+                    // Identify available and missing file dependencies
+                    List<String> dependencies = CgmesUtils.getDependenciesTreeUuids(uuid, cgmesAssemblingLogger);
+                    Set<String> availableFileDependencies = new HashSet<>();
+                    Set<String> missingDependencies = new HashSet<>();
+                    for (String dependUuid : dependencies) {
+                        String dependFileName = cgmesAssemblingLogger.getFileNameByUuid(dependUuid, sftpServerLabel);
+                        if (dependFileName != null) {
+                            availableFileDependencies.add(dependFileName);
+                        } else {
+                            missingDependencies.add(dependUuid);
+                        }
+                    }
+
+                    // Assembling profiles
+                    TransferableFile assembledFile = CgmesUtils.prepareFinalZip(file.getFileName().toString(), availableFileDependencies,
+                            missingDependencies, cgmesAssemblingLogger, casesDirectory, sftpConnection);
+
+                    if (assembledFile != null) {
+                        // Import assembled file in the case server
                         boolean importOk = caseImportServiceRequester.importCase(assembledFile);
                         if (!importOk) {
                             filesImportingFailed.add(file);
@@ -107,7 +124,7 @@ public final class SftpProfilesAcquisitionJob {
                             cgmesAssemblingLogger.logFileImported(file.getFileName().toString(), sftpServerLabel, new Date());
                         }
                     } else {
-                        LOGGER.info("{} file's dependencies are not resolved yet", file.getFileName().toString());
+                        LOGGER.error("{} file's dependencies are not resolved yet", file.getFileName().toString());
                     }
                 } else {
                     filesAlreadyImported.add(file);
@@ -119,7 +136,7 @@ public final class SftpProfilesAcquisitionJob {
             LOGGER.info("{} files successfully handled", filesHandled.size());
             filesHandled.forEach(f -> LOGGER.info("File '{}' successfully handled", f));
 
-            LOGGER.info("{} files import failed", filesSuccessfullyImported.size());
+            LOGGER.info("{} files import succeeded", filesSuccessfullyImported.size());
             filesSuccessfullyImported.forEach(f -> LOGGER.info("Assembled files with  '{}' file successfully imported !!", f));
             LOGGER.info("{} files import failed", filesImportingFailed.size());
             filesImportingFailed.forEach(f -> LOGGER.info("Assembled files with  '{}' file import failed !!", f));

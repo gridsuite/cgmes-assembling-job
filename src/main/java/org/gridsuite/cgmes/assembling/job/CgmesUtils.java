@@ -7,19 +7,36 @@
 package org.gridsuite.cgmes.assembling.job;
 
 import com.powsybl.commons.compress.ZipPackager;
+import org.apache.commons.lang3.tuple.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
+ * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
 public final class CgmesUtils {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CgmesUtils.class);
+
+    public static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList("EQ", "SSH", "SV", "TP"));
+
+    // We add sourcingActor "XX" for test purpose
+    private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "XX"));
+
+    private static final String SV_MODEL_PART = "SV";
+
+    private static final String EQ_MODEL_PART = "EQ";
 
     private  CgmesUtils() {
     }
@@ -60,23 +77,21 @@ public final class CgmesUtils {
     }
 
     private static boolean isValidSourcingActor(String sourcingActor) {
-        List<String>  sourcingActors = Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "NG");
-        return sourcingActors.contains(sourcingActor);
+        return NEEDED_SOURCING_ACTORS.contains(sourcingActor);
     }
 
     private static boolean isValidBusinessProcess(String businessProcess, String modelPart) {
-        return !businessProcess.isEmpty() || modelPart.equals("EQ");
+        return !businessProcess.isEmpty() || modelPart.equals(EQ_MODEL_PART);
     }
 
     private static boolean isValidModelPart(String modelPart) {
-        List<String> modelParts = Arrays.asList("SSH", "EQ", "TP", "SV");
-        return modelParts.contains(modelPart);
+        return NEEDED_PROFILES.contains(modelPart);
     }
 
     public static boolean isSVFile(String filename) {
         String base = filename.split(DOT_REGEX)[0];
         String[] parts = base.split(UNDERSCORE_REGEX);
-        return parts[3].equals("SV");
+        return parts[3].equals(SV_MODEL_PART);
     }
 
     public static ZipInputStream getZipInputStream(byte[] compressedData) throws IOException {
@@ -85,49 +100,46 @@ public final class CgmesUtils {
         return zis;
     }
 
-    public static boolean isDependenciesTreeResolved(String uuid, CgmesAssemblingLogger cgmesAssemblingLogger) {
-        List<String> dependencies = cgmesAssemblingLogger.getDependencies(uuid);
-        if (dependencies == null) {
-            return false;
-        }
-        if (dependencies.isEmpty()) {
-            return true;
-        }
-        for (String depUuid : dependencies) {
-            if (!isDependenciesTreeResolved(depUuid, cgmesAssemblingLogger)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     public static List<String> getDependenciesTreeUuids(String uuid, CgmesAssemblingLogger cgmesAssemblingLogger) {
         List<String> dependencies = cgmesAssemblingLogger.getDependencies(uuid);
         List<String> uuids = new ArrayList<>();
-        if (dependencies.isEmpty()) {
+        if (dependencies == null || dependencies.isEmpty()) {
             return Arrays.asList(uuid);
         }
+        uuids.add(uuid);
         for (String depUuid : dependencies) {
             uuids.addAll(getDependenciesTreeUuids(depUuid, cgmesAssemblingLogger));
         }
         return uuids;
     }
 
-    public static TransferableFile prepareFinalZip(String filenameSV, String origin, CgmesAssemblingLogger cgmesAssemblingLogger,
+    public static TransferableFile prepareFinalZip(String filenameSV, Set<String> availableFileDependencies, Set<String> missingDependencies,
+                                                   CgmesAssemblingLogger cgmesAssemblingLogger,
                                                    String casesDirectory, SftpConnection sftpConnection) throws IOException {
-        String uuid = cgmesAssemblingLogger.getUuidByFileName(filenameSV, origin);
-
-        List<String> filenames = getDependenciesTreeUuids(uuid, cgmesAssemblingLogger)
-                .stream().map(e -> casesDirectory + "/" + cgmesAssemblingLogger.getFileNameByUuid(e, origin))
-                .collect(Collectors.toList());
-
         ZipPackager emptyZipPackager = new ZipPackager();
 
-        for (String s : filenames) {
-            TransferableFile file = sftpConnection.getFile(s);
-            emptyZipPackager.addBytes(file.getName(), file.getData());
+        String cgmesFileName = filenameSV.replace("_" + SV_MODEL_PART, "");
+
+        // Search for missing dependencies in the boundaries database table
+        for (String depend : missingDependencies) {
+            Pair<String, byte[]> boundary = cgmesAssemblingLogger.getBoundary(depend);
+            if (boundary == null) {
+                LOGGER.error("{} dependency not found in the boundaries database table", depend);
+                return null;
+            } else {
+                LOGGER.info("assembling boundary file {} into CGMES {} file", boundary.getLeft(), cgmesFileName);
+                emptyZipPackager.addBytes(boundary.getLeft(), boundary.getRight());
+            }
         }
 
-        return new TransferableFile(filenameSV.replace("_SV", ""), emptyZipPackager.toZipBytes());
+        // Get and add available files in the zip package
+        List<String> filenames = availableFileDependencies.stream().map(e -> casesDirectory + "/" + e).collect(Collectors.toList());
+        for (String s : filenames) {
+            TransferableFile file = sftpConnection.getFile(s);
+            LOGGER.info("assembling available file {} into CGMES {} file", file.getName(), cgmesFileName);
+            emptyZipPackager.addBytes(file.getName().replace(".zip", ".xml"), getZipInputStream(file.getData()).readAllBytes());
+        }
+
+        return new TransferableFile(cgmesFileName, emptyZipPackager.toZipBytes());
     }
 }
