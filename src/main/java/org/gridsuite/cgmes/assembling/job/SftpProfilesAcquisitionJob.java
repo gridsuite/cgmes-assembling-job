@@ -38,8 +38,10 @@ public final class SftpProfilesAcquisitionJob {
         ModuleConfig moduleConfigSftpServer = platformConfig.getModuleConfig("sftp-server");
         ModuleConfig moduleConfigCassandra = platformConfig.getModuleConfig("cassandra");
         ModuleConfig moduleConfigCaseServer = platformConfig.getModuleConfig("case-server");
+        ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getModuleConfig("cgmes-boundary-server");
 
         final CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester(moduleConfigCaseServer.getStringProperty("url"));
+        final CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester(moduleConfigCgmesBoundaryServer.getStringProperty("url"));
 
         try (SftpConnection sftpConnection = new SftpConnection();
              CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
@@ -112,7 +114,7 @@ public final class SftpProfilesAcquisitionJob {
 
                     // Assembling profiles
                     TransferableFile assembledFile = CgmesUtils.prepareFinalZip(file.getFileName().toString(), availableFileDependencies,
-                            missingDependencies, cgmesAssemblingLogger, casesDirectory, sftpConnection);
+                            missingDependencies, cgmesAssemblingLogger, casesDirectory, sftpConnection, cgmesBoundaryServiceRequester);
 
                     if (assembledFile != null) {
                         // Import assembled file in the case server

@@ -9,9 +9,14 @@ package org.gridsuite.cgmes.assembling.job;
 import com.github.nosan.embedded.cassandra.api.cql.CqlDataSet;
 import com.github.nosan.embedded.cassandra.junit4.test.CassandraRule;
 import com.github.stefanbirkner.fakesftpserver.rule.FakeSftpServerRule;
-import org.junit.*;
+import org.apache.commons.lang3.tuple.Pair;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
 import org.mockserver.junit.MockServerRule;
-import org.mockserver.verify.VerificationTimes;
+import org.mockserver.matchers.Times;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -22,7 +27,10 @@ import java.util.Date;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 
@@ -40,7 +48,7 @@ public class SftpProfilesAcquisitionJobTest {
     public static final FakeSftpServerRule SFTP_SERVER_RULE = new FakeSftpServerRule().addUser("dummy", "dummy").setPort(2222);
 
     @Rule
-    public final MockServerRule mockServer = new MockServerRule(this, 45385);
+    public final MockServerRule mockServer = new MockServerRule(this, 45385, 55487);
 
     @Before
     public void setUp() throws IOException {
@@ -99,16 +107,32 @@ public class SftpProfilesAcquisitionJobTest {
         CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester("http://localhost:45385/");
         mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
                 .respond(response().withStatusCode(200));
-        assertTrue(caseImportServiceRequester.importCase(new TransferableFile("case.iidm", "Case file content".getBytes(UTF_8))));
+        assertTrue(caseImportServiceRequester.importCase(new TransferableFile("case.iidm", new String("Case file content").getBytes(UTF_8))));
         mockServer.getClient().clear(request());
         mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
                 .respond(response().withStatusCode(500));
-        assertFalse(caseImportServiceRequester.importCase(new TransferableFile("case.iidm", "Case file content".getBytes(UTF_8))));
+        assertFalse(caseImportServiceRequester.importCase(new TransferableFile("case.iidm", new String("Case file content").getBytes(UTF_8))));
+    }
+
+    @Test
+    public void testCgmesBoundaryRequester() {
+        CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester("http://localhost:55487/");
+        String resExpected = "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358"))
+                .respond(response().withStatusCode(200)
+                        .withBody(resExpected));
+        Pair<String, byte[]> res = cgmesBoundaryServiceRequester.getBoundary("urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358");
+        assertEquals("titi.xml", res.getLeft());
+        assertEquals("content", new String(res.getRight(), UTF_8));
+
+        mockServer.getClient().clear(request());
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71"))
+                .respond(response().withStatusCode(500));
+        assertNull(cgmesBoundaryServiceRequester.getBoundary("urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71"));
     }
 
     @Test
     public void mainTest() throws IOException {
-
         SFTP_SERVER_RULE.createDirectory("/cases");
 
         try (InputStream isSSH = getClass().getResourceAsStream("/20191106T0930Z_1D_XX_SSH_001.zip");
@@ -125,80 +149,102 @@ public class SftpProfilesAcquisitionJobTest {
         String[] args = null;
 
         // 2 files on SFTP server (SV and SSH), 2 cases will be imported
-        mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
-            .respond(response().withStatusCode(200));
+        //
+        String boundary1 = "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary1));
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(500));
 
         SftpProfilesAcquisitionJob.main(args);
 
-        mockServer.getClient().verify(request().withMethod("POST").withPath("/v1/cases/public"), VerificationTimes.exactly(0));
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_SSH_001.zip", "my_sftp_server"));
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
+        assertFalse(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
 
         // No new files on SFTP server, no import requested
-//        mockServer.getClient().clear(request());
-//        mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
-//                .respond(response().withStatusCode(200));
+        //
+        mockServer.getClient().clear(request());
+        boundary1 = "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary1));
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(500));
 
         SftpProfilesAcquisitionJob.main(args);
-
-        mockServer.getClient().verify(request().withMethod("POST").withPath("/v1/cases/public"), VerificationTimes.exactly(0));
+        assertFalse(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
 
         // One new file on SFTP server (EQ), one case import requested
-//        mockServer.getClient().clear(request());
-//        mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
-//                .respond(response().withStatusCode(200));
-
+        //
         try (InputStream isEQ = getClass().getResourceAsStream("/20191106T0930Z__XX_EQ_001.zip");
              BufferedInputStream bisEQ = new BufferedInputStream(isEQ);) {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z__XX_EQ_001.zip", bisEQ.readAllBytes());
         }
 
-        SftpProfilesAcquisitionJob.main(args);
+        mockServer.getClient().clear(request());
+        boundary1 = "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary1));
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(500));
+        String boundary2 = "{\"filename\":\"tutu.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"content2\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary2));
 
-        mockServer.getClient().verify(request().withMethod("POST").withPath("/v1/cases/public"), VerificationTimes.exactly(0));
+        SftpProfilesAcquisitionJob.main(args);
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z__XX_EQ_001.zip", "my_sftp_server"));
+        assertFalse(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
 
         // One new file on SFTP server (TP), one case import requested
-//        mockServer.getClient().clear(request());
-//        mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
-//                .respond(response().withStatusCode(200));
-
+        //
         try (InputStream isTP = getClass().getResourceAsStream("/20191106T0930Z_1D_XX_TP_001.zip");
              BufferedInputStream bisTP = new BufferedInputStream(isTP);) {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_TP_001.zip", bisTP.readAllBytes());
         }
 
-        SftpProfilesAcquisitionJob.main(args);
+        mockServer.getClient().clear(request());
+        boundary1 = "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary1));
+        boundary2 = "{\"filename\":\"tutu.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"content2\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary2));
 
-        mockServer.getClient().verify(request().withMethod("POST").withPath("/v1/cases/public"), VerificationTimes.exactly(0));
+        SftpProfilesAcquisitionJob.main(args);
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_TP_001.zip", "my_sftp_server"));
-
-        // Add boundary file in cassandra database (EQBD)
-//        mockServer.getClient().clear(request());
-//        mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
-//                .respond(response().withStatusCode(200));
-
-        cgmesAssemblingLogger.addBoundary("urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71",
-                getClass().getResourceAsStream("/20191106T0930Z__ENTSOE_EQBD_001.xml").readAllBytes(),
-                "20191106T0930Z__ENTSOE_EQBD_001.xml");
-
-        SftpProfilesAcquisitionJob.main(args);
-
-        mockServer.getClient().verify(request().withMethod("POST").withPath("/v1/cases/public"), VerificationTimes.exactly(0));
         assertFalse(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
 
-        // Add boundary file in cassandra database (TPBD) : all files and boundaries are now available to assemble the cgmes
-//        mockServer.getClient().clear(request());
-//        mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"))
-//                .respond(response().withStatusCode(200));
+        boundary1 = "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary1));
+        boundary2 = "{\"filename\":\"tutu.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"content2\"}";
+        mockServer.getClient().when(request().withMethod("GET").withPath("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200)
+                        .withBody(boundary2));
 
-        cgmesAssemblingLogger.addBoundary("urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
-                getClass().getResourceAsStream("/20191106T0930Z__ENTSOE_TPBD_001.xml").readAllBytes(),
-                "20191106T0930Z__ENTSOE_TPBD_001.xml");
+        mockServer.getClient().when(request().withMethod("POST").withPath("/v1/cases/public"),
+                Times.exactly(1))
+                .respond(response().withStatusCode(200));
 
         SftpProfilesAcquisitionJob.main(args);
-
-        mockServer.getClient().verify(request().withMethod("POST").withPath("/v1/cases/public"), VerificationTimes.exactly(1));
         assertTrue(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
     }
 
@@ -233,8 +279,6 @@ public class SftpProfilesAcquisitionJobTest {
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_TP_001.zip", "my_sftp_server"));
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z__XX_EQ_001.zip", "my_sftp_server"));
-
-        mockServer.getClient().verify(request().withMethod("POST").withPath("/v1/cases/public"), VerificationTimes.exactly(0));
     }
 
     @Test
@@ -265,5 +309,4 @@ public class SftpProfilesAcquisitionJobTest {
             e.printStackTrace();
         }
     }
-
 }

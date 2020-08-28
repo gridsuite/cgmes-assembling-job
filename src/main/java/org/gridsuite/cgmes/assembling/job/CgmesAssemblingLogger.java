@@ -9,11 +9,9 @@ package org.gridsuite.cgmes.assembling.job;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
 import java.util.Date;
 import java.util.List;
 
@@ -30,14 +28,12 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     private final CassandraConnector connector = new CassandraConnector();
 
     private static final String KEYSPACE_CGMES_ASSEMBLING = "cgmes_assembling";
-    private static final String KEYSPACE_MERGE_ORCHESTRATOR = "merge_orchestrator";
 
     private static final String HANDLED_FILES_TABLE = "handled_files";
     private static final String IMPORTED_FILES_TABLE = "imported_files";
     private static final String FILENAME_BY_UUID_TABLE = "filename_by_uuid";
     private static final String UUID_BY_FILENAME_TABLE = "uuid_by_filename";
     private static final String DEPENDENCIES_TABLE = "dependencies";
-    private static final String BOUNDARIES_TABLE = "boundaries";
 
     private static final String FILENAME_COLUMN = "filename";
     private static final String ORIGIN_COLUMN = "origin";
@@ -45,17 +41,11 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     private static final String UUID_COLUMN = "uuid";
     private static final String DEPENDENCIES_COLUMN = "dependencies";
 
-    private static final String BOUNDARY_COLUMN = "boundary";
-    private static final String BOUNDARY_ID_COLUMN = "id";
-    private static final String BOUNDARY_FILENAME_COLUMN = "filename";
-
     private PreparedStatement psInsertHandledFile;
     private PreparedStatement psInsertImportedFile;
     private PreparedStatement psInsertFileNameByUUID;
     private PreparedStatement psInsertUuidByFilename;
     private PreparedStatement psInsertDependencies;
-
-    private PreparedStatement psInsertBoundary;
 
     public void connectDb(String hostname, int port) {
         connector.connect(hostname, port);
@@ -83,11 +73,6 @@ public class CgmesAssemblingLogger implements AutoCloseable {
         psInsertDependencies = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, DEPENDENCIES_TABLE)
                 .value(UUID_COLUMN, bindMarker())
                 .value(DEPENDENCIES_COLUMN, bindMarker()));
-
-        psInsertBoundary = connector.getSession().prepare(insertInto(KEYSPACE_MERGE_ORCHESTRATOR, BOUNDARIES_TABLE)
-                .value(BOUNDARY_ID_COLUMN, bindMarker())
-                .value(BOUNDARY_COLUMN, bindMarker())
-                .value(BOUNDARY_FILENAME_COLUMN, bindMarker()));
     }
 
     public boolean isHandledFile(String filename, String origin) {
@@ -149,24 +134,6 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     public void logFileDependencies(String uuid, List<String> dependencies) {
         connector.getSession().execute(psInsertDependencies.bind(uuid, dependencies));
         LOGGER.info("Add dependancy between file {} and files {}", uuid, dependencies);
-    }
-
-    public Pair<String, byte[]> getBoundary(String id) {
-        ResultSet resultSet = connector.getSession().execute(select(BOUNDARY_FILENAME_COLUMN, BOUNDARY_COLUMN)
-                .from(KEYSPACE_MERGE_ORCHESTRATOR, BOUNDARIES_TABLE)
-                .where(eq(BOUNDARY_ID_COLUMN, id)));
-        Row one = resultSet.one();
-        if (one != null) {
-            byte[] array = new byte[one.getBytes(1).remaining()];
-            one.getBytes(1).get(array, 0, array.length);
-            return Pair.of(one.getString(0), array);
-        } else {
-            return null;
-        }
-    }
-
-    public void addBoundary(String id, byte[] buf, String filename) {
-        connector.getSession().execute(psInsertBoundary.bind(id, ByteBuffer.wrap(buf), filename));
     }
 
     public void close() {

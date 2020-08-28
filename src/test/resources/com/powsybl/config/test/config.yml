@@ -12,3 +12,7 @@ cassandra:
 
 case-server:
   url: http://localhost:45385/
+
+cgmes-boundary-server:
+  url: http://localhost:55487/
+

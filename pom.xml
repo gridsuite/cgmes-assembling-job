@@ -55,6 +55,7 @@
         <junit.version>4.13</junit.version>
         <fake.sftp.server.version>2.0.1</fake.sftp.server.version>
         <mockserver.version>5.10.0</mockserver.version>
+        <springboot.version>2.2.5.RELEASE</springboot.version>
     </properties>
 
     <dependencies>
@@ -68,12 +69,6 @@
             <artifactId>powsybl-cgmes-model</artifactId>
             <version>${powsyblcore.version}</version>
         </dependency>
-        <dependency>
-            <groupId>com.powsybl</groupId>
-            <artifactId>powsybl-commons</artifactId>
-            <version>${powsyblcore.version}</version>
-        </dependency>
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -93,6 +88,11 @@
             <groupId>com.hierynomus</groupId>
             <artifactId>sshj</artifactId>
             <version>${sshj.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20200518</version>
         </dependency>
 
         <!-- Runtime dependencies -->
@@ -140,6 +140,7 @@
             <version>${fake.sftp.server.version}</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <profiles>

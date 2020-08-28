@@ -115,16 +115,17 @@ public final class CgmesUtils {
 
     public static TransferableFile prepareFinalZip(String filenameSV, Set<String> availableFileDependencies, Set<String> missingDependencies,
                                                    CgmesAssemblingLogger cgmesAssemblingLogger,
-                                                   String casesDirectory, SftpConnection sftpConnection) throws IOException {
+                                                   String casesDirectory, SftpConnection sftpConnection,
+                                                   CgmesBoundaryServiceRequester boundaryServiceRequester) throws IOException {
         ZipPackager emptyZipPackager = new ZipPackager();
 
         String cgmesFileName = filenameSV.replace("_" + SV_MODEL_PART, "");
 
         // Search for missing dependencies in the boundaries database table
         for (String depend : missingDependencies) {
-            Pair<String, byte[]> boundary = cgmesAssemblingLogger.getBoundary(depend);
+            Pair<String, byte[]> boundary = boundaryServiceRequester.getBoundary(depend);
             if (boundary == null) {
-                LOGGER.error("{} dependency not found in the boundaries database table", depend);
+                LOGGER.warn("{} dependency not found", depend);
                 return null;
             } else {
                 LOGGER.info("assembling boundary file {} into CGMES {} file", boundary.getLeft(), cgmesFileName);

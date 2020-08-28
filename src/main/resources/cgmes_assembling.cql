@@ -31,13 +31,3 @@ CREATE TABLE IF NOT EXISTS cgmes_assembling.dependencies (
     dependencies frozen<List<text>>,
     PRIMARY KEY (uuid)
 );
-
-CREATE TABLE IF NOT EXISTS merge_orchestrator.boundaries (
-    id text,
-    boundary blob,
-    filename text,
-    PRIMARY KEY (id)
-);
-
-
-
