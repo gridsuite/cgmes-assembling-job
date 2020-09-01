@@ -21,6 +21,8 @@ import java.util.*;
 /**
  *
  * @author Geoffroy Jamgotchian <geoffroy.jamgotchian at rte-france.com>
+ *
+ * This class is copied from powsybl-core and should be removed using version 3.6.0
  */
 public class FullModel {
 

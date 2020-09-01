@@ -9,6 +9,8 @@ package org.gridsuite.cgmes.assembling.fullmodel;
 
 /**
  * @author Luma Zamarreño <zamarrenolm at aia.es>
+ *
+ * This class is copied from powsybl-core and should be removed using version 3.6.0
  */
 public final class CgmesNames {
 
