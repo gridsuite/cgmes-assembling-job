@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -55,8 +56,21 @@ public class SftpConnection implements AutoCloseable {
         }
     }
 
+    class RemoteResourceInfoComparator implements Comparator<RemoteResourceInfo> {
+        @Override
+        public int compare(RemoteResourceInfo r1, RemoteResourceInfo r2) {
+            if (r1 == r2) {
+                return 0;
+            } else {
+                return Long.compare(r1.getAttributes().getMtime(), r2.getAttributes().getMtime());
+            }
+        }
+    }
+
     public List<Path> listFiles(String acquisitionPath) throws IOException {
         List<RemoteResourceInfo> files = sftpClient.ls(acquisitionPath);
+        // sorting files by modification time in reverse order (most recent files first)
+        files.sort(new RemoteResourceInfoComparator().reversed());
         List<Path> filesToAcquire = new ArrayList<>();
         for (RemoteResourceInfo info : files) {
             if (info.isRegularFile()) {
