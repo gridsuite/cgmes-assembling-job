@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,7 +30,7 @@ public final class CgmesUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CgmesUtils.class);
 
-    public static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList("EQ", "SSH", "SV", "TP"));
+    private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList("EQ", "SSH", "SV", "TP"));
 
     // We add sourcingActor "XX" for test purpose
     private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "XX"));
@@ -38,7 +39,7 @@ public final class CgmesUtils {
 
     private static final String EQ_MODEL_PART = "EQ";
 
-    public static final Set<String> NEEDED_BUSINESS_PROCESS = new TreeSet<>(Arrays.asList("YR", "MO", "WK", "2D", "1D", "RT"));
+    private static final Set<String> NEEDED_BUSINESS_PROCESS = new TreeSet<>(Arrays.asList("YR", "MO", "WK", "2D", "1D", "RT"));
 
     private  CgmesUtils() {
     }
@@ -78,7 +79,7 @@ public final class CgmesUtils {
             int v = Integer.parseInt(version);
             return version.length() == 3 && v > 0 && v < 1000;
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid model version", version);
+            LOGGER.warn("Invalid model version {}", version);
             return false;
         }
     }
@@ -98,7 +99,7 @@ public final class CgmesUtils {
                     int v = Integer.parseInt(businessProcess);
                     return v >= 1 && v <= 23;
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("Invalid business process", businessProcess);
+                    LOGGER.warn("Invalid business process {}", businessProcess);
                     return false;
                 }
             }
@@ -135,7 +136,6 @@ public final class CgmesUtils {
     }
 
     public static TransferableFile prepareFinalZip(String filenameSV, Set<String> availableFileDependencies, Set<String> missingDependencies,
-                                                   CgmesAssemblingLogger cgmesAssemblingLogger,
                                                    String casesDirectory, SftpConnection sftpConnection,
                                                    CgmesBoundaryServiceRequester boundaryServiceRequester) throws IOException {
         ZipPackager emptyZipPackager = new ZipPackager();
@@ -155,7 +155,7 @@ public final class CgmesUtils {
         }
 
         // Get and add available files in the zip package
-        List<String> filenames = availableFileDependencies.stream().map(e -> casesDirectory + "/" + e).collect(Collectors.toList());
+        List<String> filenames = availableFileDependencies.stream().map(e -> casesDirectory + File.separator + e).collect(Collectors.toList());
         for (String s : filenames) {
             TransferableFile file = sftpConnection.getFile(s);
             LOGGER.info("assembling available file {} into CGMES {} file", file.getName(), cgmesFileName);

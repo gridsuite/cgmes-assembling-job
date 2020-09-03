@@ -59,6 +59,9 @@ public class CgmesBoundaryServiceRequester {
             }
         } catch (IOException | InterruptedException e) {
             LOGGER.error("Error getting boundary with id {}", boundaryId);
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         return null;

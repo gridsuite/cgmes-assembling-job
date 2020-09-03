@@ -114,7 +114,7 @@ public final class SftpProfilesAcquisitionJob {
 
                     // Assembling profiles
                     TransferableFile assembledFile = CgmesUtils.prepareFinalZip(file.getFileName().toString(), availableFileDependencies,
-                            missingDependencies, cgmesAssemblingLogger, casesDirectory, sftpConnection, cgmesBoundaryServiceRequester);
+                            missingDependencies, casesDirectory, sftpConnection, cgmesBoundaryServiceRequester);
 
                     if (assembledFile != null) {
                         // Import assembled file in the case server
@@ -126,7 +126,7 @@ public final class SftpProfilesAcquisitionJob {
                             cgmesAssemblingLogger.logFileImported(file.getFileName().toString(), sftpServerLabel, new Date());
                         }
                     } else {
-                        LOGGER.error("{} file's dependencies are not resolved yet", file.getFileName().toString());
+                        LOGGER.error("{} file's dependencies are not resolved yet", file.getFileName());
                     }
                 } else {
                     filesAlreadyImported.add(file);

@@ -68,12 +68,12 @@ public class SftpProfilesAcquisitionJobTest {
             cgmesAssemblingLogger.connectDb("localhost", 9142);
             assertFalse(cgmesAssemblingLogger.isHandledFile("testFile.iidm", "my_sftp_server"));
             cgmesAssemblingLogger.logFileAvailable("testFile.iidm", "uuid", "my_sftp_server", new Date());
-            assertEquals(cgmesAssemblingLogger.getFileNameByUuid("uuid", "my_sftp_server"), "testFile.iidm");
-            assertEquals(cgmesAssemblingLogger.getUuidByFileName("testFile.iidm", "my_sftp_server"), "uuid");
+            assertEquals("testFile.iidm", cgmesAssemblingLogger.getFileNameByUuid("uuid", "my_sftp_server"));
+            assertEquals("uuid", cgmesAssemblingLogger.getUuidByFileName("testFile.iidm", "my_sftp_server"));
             assertTrue(cgmesAssemblingLogger.isHandledFile("testFile.iidm", "my_sftp_server"));
 
             cgmesAssemblingLogger.logFileDependencies("uuid", Arrays.asList("uuid1", "uuid2"));
-            assertEquals(cgmesAssemblingLogger.getDependencies("uuid").size(), 2, 0);
+            assertEquals(2, cgmesAssemblingLogger.getDependencies("uuid").size(), 2);
 
         }
     }
