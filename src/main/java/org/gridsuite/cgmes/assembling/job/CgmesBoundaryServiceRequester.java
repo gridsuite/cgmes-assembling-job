@@ -57,11 +57,11 @@ public class CgmesBoundaryServiceRequester {
 
                 return Pair.of(filename, boundaryXml.getBytes(StandardCharsets.UTF_8));
             }
-        } catch (IOException | InterruptedException e) {
-            LOGGER.error("Error getting boundary with id {}", boundaryId);
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
+        } catch (IOException e) {
+            LOGGER.error("I/O Error while getting boundary with id {}", boundaryId);
+        } catch (InterruptedException e) {
+            LOGGER.error("Interruption when getting boundary with id {}", boundaryId);
+            Thread.currentThread().interrupt();
         }
 
         return null;
