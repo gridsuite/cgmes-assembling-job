@@ -285,19 +285,19 @@ public class SftpProfilesAcquisitionJobTest {
     public void testAcceptedFilesConnection() throws IOException {
 
         SFTP_SERVER_RULE.createDirectory("/cases");
-        SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_ 1D_RTEFRANCE-FR_SV_002.zip", "fake file content 1", UTF_8);
+        SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip", "fake file content 1", UTF_8);
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z__RTEFRANCE-FR_EQ_002.zip", "fake file content 2", UTF_8);
-        SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_ 1D_RTEFRANCE-FR_SSH_002.zip", "fake file content 3", UTF_8);
-        SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_ 1D_RTEFRANCE-FR_TP_002.zip", "fake file content 4", UTF_8);
+        SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_SSH_002.zip", "fake file content 3", UTF_8);
+        SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_TP_002.zip", "fake file content 4", UTF_8);
 
         try (SftpConnection sftpConnection = new SftpConnection()) {
             sftpConnection.open("localhost", SFTP_SERVER_RULE.getPort(), "dummy", "dummy");
             List<Path> retrievedFiles = sftpConnection.listFiles("./cases");
             assertEquals(4, retrievedFiles.size());
 
-            TransferableFile file1 = sftpConnection.getFile("./cases/20200817T1705Z_ 1D_RTEFRANCE-FR_SV_002.zip");
+            TransferableFile file1 = sftpConnection.getFile("./cases/20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip");
             assertTrue(CgmesUtils.isValidProfileFileName(file1.getName()));
-            assertEquals("20200817T1705Z_ 1D_RTEFRANCE-FR_SV_002.zip", file1.getName());
+            assertEquals("20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip", file1.getName());
             assertEquals("fake file content 1", new String(file1.getData(), UTF_8));
 
             TransferableFile file2 = sftpConnection.getFile("./cases/20200817T1705Z__RTEFRANCE-FR_EQ_002.zip");

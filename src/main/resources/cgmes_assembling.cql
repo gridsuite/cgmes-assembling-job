@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS cgmes_assembling.handled_files (
     filename text,
     origin text,
-    import_date timestamp,
+    handled_date timestamp,
     PRIMARY KEY (filename, origin)
 );
 

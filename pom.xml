@@ -24,8 +24,8 @@
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
 
-    <name>SFTP acquisition job</name>
-    <description>SFTP acquisition job</description>
+    <name>CGMES assembling job</name>
+    <description>Job used to assemble CGMES profiles in one single file</description>
     <url>http://www.gridsuite.org</url>
 
     <scm>

@@ -38,6 +38,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     private static final String FILENAME_COLUMN = "filename";
     private static final String ORIGIN_COLUMN = "origin";
     private static final String IMPORT_DATE_COLUMN = "import_date";
+    private static final String HANDLED_DATE_COLUMN = "handled_date";
     private static final String UUID_COLUMN = "uuid";
     private static final String DEPENDENCIES_COLUMN = "dependencies";
 
@@ -53,7 +54,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
         psInsertHandledFile = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(ORIGIN_COLUMN, bindMarker())
-                .value(IMPORT_DATE_COLUMN, bindMarker()));
+                .value(HANDLED_DATE_COLUMN, bindMarker()));
 
         psInsertFileNameByUUID = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, FILENAME_BY_UUID_TABLE)
                 .value(UUID_COLUMN, bindMarker())
@@ -78,7 +79,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     public boolean isHandledFile(String filename, String origin) {
         ResultSet resultSet = connector.getSession().execute(select(FILENAME_COLUMN,
                 ORIGIN_COLUMN,
-                IMPORT_DATE_COLUMN)
+                HANDLED_DATE_COLUMN)
                 .from(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
                 .where(eq(FILENAME_COLUMN, filename)).and(eq(ORIGIN_COLUMN, origin)));
         Row one = resultSet.one();
@@ -96,8 +97,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public String getUuidByFileName(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(select(UUID_COLUMN, FILENAME_COLUMN,
-                ORIGIN_COLUMN)
+        ResultSet resultSet = connector.getSession().execute(select(UUID_COLUMN)
                 .from(KEYSPACE_CGMES_ASSEMBLING, UUID_BY_FILENAME_TABLE)
                 .where(eq(FILENAME_COLUMN, filename)).and(eq(ORIGIN_COLUMN, origin)));
         Row one = resultSet.one();
@@ -105,8 +105,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public String getFileNameByUuid(String uuid, String origin) {
-        ResultSet resultSet = connector.getSession().execute(select(FILENAME_COLUMN, UUID_COLUMN,
-                ORIGIN_COLUMN)
+        ResultSet resultSet = connector.getSession().execute(select(FILENAME_COLUMN)
                 .from(KEYSPACE_CGMES_ASSEMBLING, FILENAME_BY_UUID_TABLE)
                 .where(eq(UUID_COLUMN, uuid)).and(eq(ORIGIN_COLUMN, origin)));
         Row one = resultSet.one();
@@ -114,11 +113,11 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public List<String> getDependencies(String uuid) {
-        ResultSet resultSet = connector.getSession().execute(select(UUID_COLUMN, DEPENDENCIES_COLUMN)
+        ResultSet resultSet = connector.getSession().execute(select(DEPENDENCIES_COLUMN)
                 .from(KEYSPACE_CGMES_ASSEMBLING, DEPENDENCIES_TABLE)
                 .where(eq(UUID_COLUMN, uuid)));
         Row one = resultSet.one();
-        return one != null ? one.getList(1, String.class) : null;
+        return one != null ? one.getList(0, String.class) : null;
     }
 
     public void logFileAvailable(String fileName, String uuid, String origin, Date date) {

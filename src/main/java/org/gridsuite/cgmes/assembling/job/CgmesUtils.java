@@ -38,6 +38,8 @@ public final class CgmesUtils {
 
     private static final String EQ_MODEL_PART = "EQ";
 
+    public static final Set<String> NEEDED_BUSINESS_PROCESS = new TreeSet<>(Arrays.asList("YR", "MO", "WK", "2D", "1D", "RT"));
+
     private  CgmesUtils() {
     }
 
@@ -72,8 +74,13 @@ public final class CgmesUtils {
     }
 
     private static boolean isValidModelVersion(String version) {
-        int v = Integer.parseInt(version);
-        return version.length() == 3 && v > 0 && v < 1000;
+        try {
+            int v = Integer.parseInt(version);
+            return version.length() == 3 && v > 0 && v < 1000;
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid model version", version);
+            return false;
+        }
     }
 
     private static boolean isValidSourcingActor(String sourcingActor) {
@@ -81,7 +88,21 @@ public final class CgmesUtils {
     }
 
     private static boolean isValidBusinessProcess(String businessProcess, String modelPart) {
-        return !businessProcess.isEmpty() || modelPart.equals(EQ_MODEL_PART);
+        if (businessProcess.isEmpty()) {
+            return modelPart.equals(EQ_MODEL_PART);
+        } else {
+            if (NEEDED_BUSINESS_PROCESS.contains(businessProcess)) {
+                return true;
+            } else {
+                try {
+                    int v = Integer.parseInt(businessProcess);
+                    return v >= 1 && v <= 23;
+                } catch (NumberFormatException e) {
+                    LOGGER.warn("Invalid business process", businessProcess);
+                    return false;
+                }
+            }
+        }
     }
 
     private static boolean isValidModelPart(String modelPart) {
