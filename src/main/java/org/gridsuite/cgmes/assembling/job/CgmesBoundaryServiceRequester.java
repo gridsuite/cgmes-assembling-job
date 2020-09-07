@@ -49,7 +49,6 @@ public class CgmesBoundaryServiceRequester {
 
             if (response.statusCode() == 200) {
                 String json = response.body();
-                LOGGER.info("Http request response body: {}", json);
 
                 JSONObject obj = new JSONObject(json);
                 String boundaryXml = obj.getString("boundary");
