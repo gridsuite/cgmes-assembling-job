@@ -33,7 +33,7 @@ public final class CgmesUtils {
     private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList("EQ", "SSH", "SV", "TP"));
 
     // We add sourcingActor "XX" for test purpose
-    private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "XX"));
+    private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "BE", "NL", "XX"));
 
     private static final String SV_MODEL_PART = "SV";
 
