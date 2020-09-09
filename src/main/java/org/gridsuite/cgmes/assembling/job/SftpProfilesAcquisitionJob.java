@@ -8,7 +8,7 @@ package org.gridsuite.cgmes.assembling.job;
 
 import com.powsybl.commons.config.ModuleConfig;
 import com.powsybl.commons.config.PlatformConfig;
-import org.gridsuite.cgmes.assembling.fullmodel.FullModel;
+import com.powsybl.cgmes.model.FullModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
