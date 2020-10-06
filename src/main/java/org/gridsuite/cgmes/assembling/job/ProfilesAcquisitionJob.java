@@ -6,36 +6,34 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
+import com.powsybl.cgmes.model.FullModel;
 import com.powsybl.commons.config.ModuleConfig;
 import com.powsybl.commons.config.PlatformConfig;
-import com.powsybl.cgmes.model.FullModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
-
 import java.util.zip.ZipInputStream;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
-public final class SftpProfilesAcquisitionJob {
+public final class ProfilesAcquisitionJob {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SftpProfilesAcquisitionJob.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProfilesAcquisitionJob.class);
 
-    private SftpProfilesAcquisitionJob() {
+    private ProfilesAcquisitionJob() {
     }
 
     public static void main(String... args) {
 
         PlatformConfig platformConfig = PlatformConfig.defaultConfig();
 
-        ModuleConfig moduleConfigSftpServer = platformConfig.getModuleConfig("sftp-server");
+        ModuleConfig moduleConfigAcquisitionServer = platformConfig.getModuleConfig("acquisition-server");
         ModuleConfig moduleConfigCassandra = platformConfig.getModuleConfig("cassandra");
         ModuleConfig moduleConfigCaseServer = platformConfig.getModuleConfig("case-server");
         ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getModuleConfig("cgmes-boundary-server");
@@ -43,93 +41,92 @@ public final class SftpProfilesAcquisitionJob {
         final CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester(moduleConfigCaseServer.getStringProperty("url"));
         final CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester(moduleConfigCgmesBoundaryServer.getStringProperty("url"));
 
-        try (SftpConnection sftpConnection = new SftpConnection();
+        try (AcquisitionServer acquisitionServer = new AcquisitionServer(moduleConfigAcquisitionServer.getStringProperty("url"),
+                                                                         moduleConfigAcquisitionServer.getStringProperty("username"),
+                                                                         moduleConfigAcquisitionServer.getStringProperty("password"));
              CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
 
-            sftpConnection.open(moduleConfigSftpServer.getStringProperty("hostname"),
-                                moduleConfigSftpServer.getIntProperty("port", 22),
-                                moduleConfigSftpServer.getStringProperty("username"),
-                                moduleConfigSftpServer.getStringProperty("password"));
+            acquisitionServer.open();
 
             cgmesAssemblingLogger.connectDb(moduleConfigCassandra.getStringProperty("contact-points"), moduleConfigCassandra.getIntProperty("port"));
 
-            String casesDirectory = moduleConfigSftpServer.getStringProperty("cases-directory");
-            String sftpServerLabel = moduleConfigSftpServer.getStringProperty("label");
+            String casesDirectory = moduleConfigAcquisitionServer.getStringProperty("cases-directory");
+            String acquisitionServerLabel = moduleConfigAcquisitionServer.getStringProperty("label");
 
             // Get valid zip files
-            List<Path> filesToAcquire = sftpConnection.listFiles(casesDirectory)
+            Map<String, String> filesToAcquire = acquisitionServer.listFiles(casesDirectory).entrySet()
                     .stream()
-                    .filter(file -> CgmesUtils.isValidProfileFileName(file.getFileName().toString()))
-                    .collect(Collectors.toList());
+                    .filter(file -> CgmesUtils.isValidProfileFileName(file.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (x, y) -> y, LinkedHashMap::new));
             LOGGER.info("{} valid files found on SFTP server", filesToAcquire.size());
 
             // Get SV files
-            List<Path> filesSV = filesToAcquire
+            Map<String, String> filesSV = filesToAcquire.entrySet()
                     .stream()
-                    .filter(file -> CgmesUtils.isSVFile(file.getFileName().toString()))
-                    .collect(Collectors.toList());
+                    .filter(file -> CgmesUtils.isSVFile(file.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (x, y) -> y, LinkedHashMap::new));
             LOGGER.info("{} valid SV files found on SFTP server", filesSV.size());
 
-            List<Path> filesHandled = new ArrayList<>();
-            List<Path> filesAlreadyHandled = new ArrayList<>();
-            List<Path> filesImportingFailed = new ArrayList<>();
-            List<Path> filesSuccessfullyImported = new ArrayList<>();
-            List<Path> filesAlreadyImported = new ArrayList<>();
+            List<String> filesHandled = new ArrayList<>();
+            List<String> filesAlreadyHandled = new ArrayList<>();
+            List<String> filesImportingFailed = new ArrayList<>();
+            List<String> filesSuccessfullyImported = new ArrayList<>();
+            List<String> filesAlreadyImported = new ArrayList<>();
 
-            for (Path file : filesToAcquire) {
-                if (!cgmesAssemblingLogger.isHandledFile(file.getFileName().toString(), sftpServerLabel)) {
-                    LOGGER.info("Handling file '{}'...", file);
+            for (Map.Entry<String, String> fileInfo : filesToAcquire.entrySet()) {
+                if (!cgmesAssemblingLogger.isHandledFile(fileInfo.getKey(), acquisitionServerLabel)) {
+                    LOGGER.info("Handling file '{}'...", fileInfo.getKey());
                     // Download the file
-                    TransferableFile acquiredFile = sftpConnection.getFile(file.toString());
+                    TransferableFile acquiredFile = acquisitionServer.getFile(fileInfo.getKey(), fileInfo.getValue());
 
                     try (ZipInputStream zipInputStream = CgmesUtils.getZipInputStream(acquiredFile.getData());
                          Reader reader = new InputStreamReader(zipInputStream)) {
                         FullModel fullModel = FullModel.parse(reader);
-                        cgmesAssemblingLogger.logFileAvailable(file.getFileName().toString(), fullModel.getId(), sftpServerLabel, new Date());
+                        cgmesAssemblingLogger.logFileAvailable(fileInfo.getKey(), fullModel.getId(), acquisitionServerLabel, new Date());
                         cgmesAssemblingLogger.logFileDependencies(fullModel.getId(), fullModel.getDependentOn());
                     }
-                    filesHandled.add(file);
+                    filesHandled.add(fileInfo.getKey());
                 } else {
-                    filesAlreadyHandled.add(file);
+                    filesAlreadyHandled.add(fileInfo.getKey());
                 }
             }
 
-            for (Path file : filesSV) {
-                if (!cgmesAssemblingLogger.isImportedFile(file.getFileName().toString(), sftpServerLabel)) {
-                    LOGGER.info("SV file '{}'...", file);
-                    String uuid = cgmesAssemblingLogger.getUuidByFileName(file.getFileName().toString(), sftpServerLabel);
+            for (Map.Entry<String, String> fileInfo : filesSV.entrySet()) {
+                if (!cgmesAssemblingLogger.isImportedFile(fileInfo.getKey(), acquisitionServerLabel)) {
+                    LOGGER.info("SV file '{}'...", fileInfo.getKey());
+                    String uuid = cgmesAssemblingLogger.getUuidByFileName(fileInfo.getKey(), acquisitionServerLabel);
 
                     // Identify available and missing file dependencies
                     List<String> dependencies = CgmesUtils.getDependenciesTreeUuids(uuid, cgmesAssemblingLogger);
-                    Set<String> availableFileDependencies = new HashSet<>();
+                    Map<String, String> availableFileDependencies = new LinkedHashMap<>();
                     Set<String> missingDependencies = new HashSet<>();
                     for (String dependUuid : dependencies) {
-                        String dependFileName = cgmesAssemblingLogger.getFileNameByUuid(dependUuid, sftpServerLabel);
+                        String dependFileName = cgmesAssemblingLogger.getFileNameByUuid(dependUuid, acquisitionServerLabel);
                         if (dependFileName != null) {
-                            availableFileDependencies.add(dependFileName);
+                            availableFileDependencies.put(dependFileName, filesToAcquire.get(dependFileName));
                         } else {
                             missingDependencies.add(dependUuid);
                         }
                     }
 
                     // Assembling profiles
-                    TransferableFile assembledFile = CgmesUtils.prepareFinalZip(file.getFileName().toString(), availableFileDependencies,
-                            missingDependencies, casesDirectory, sftpConnection, cgmesBoundaryServiceRequester);
+                    TransferableFile assembledFile = CgmesUtils.prepareFinalZip(fileInfo.getKey(), availableFileDependencies,
+                            missingDependencies, acquisitionServer, cgmesBoundaryServiceRequester);
 
                     if (assembledFile != null) {
                         // Import assembled file in the case server
                         boolean importOk = caseImportServiceRequester.importCase(assembledFile);
                         if (!importOk) {
-                            filesImportingFailed.add(file);
+                            filesImportingFailed.add(fileInfo.getKey());
                         } else {
-                            filesSuccessfullyImported.add(file);
-                            cgmesAssemblingLogger.logFileImported(file.getFileName().toString(), sftpServerLabel, new Date());
+                            filesSuccessfullyImported.add(fileInfo.getKey());
+                            cgmesAssemblingLogger.logFileImported(fileInfo.getKey(), acquisitionServerLabel, new Date());
                         }
                     } else {
-                        LOGGER.error("{} file's dependencies are not resolved yet", file.getFileName());
+                        LOGGER.error("{} file's dependencies are not resolved yet", fileInfo.getKey());
                     }
                 } else {
-                    filesAlreadyImported.add(file);
+                    filesAlreadyImported.add(fileInfo.getKey());
                 }
             }
 

@@ -12,14 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
+import java.util.*;
 import java.util.zip.ZipInputStream;
 
 /**
@@ -135,9 +129,8 @@ public final class CgmesUtils {
         return uuids;
     }
 
-    public static TransferableFile prepareFinalZip(String filenameSV, Set<String> availableFileDependencies, Set<String> missingDependencies,
-                                                   String casesDirectory, SftpConnection sftpConnection,
-                                                   CgmesBoundaryServiceRequester boundaryServiceRequester) throws IOException {
+    public static TransferableFile prepareFinalZip(String filenameSV, Map<String, String> availableFileDependencies, Set<String> missingDependencies,
+                                                   AcquisitionServer acquisitionServer, CgmesBoundaryServiceRequester boundaryServiceRequester) throws IOException {
         ZipPackager emptyZipPackager = new ZipPackager();
 
         String cgmesFileName = filenameSV.replace("_" + SV_MODEL_PART, "");
@@ -155,9 +148,8 @@ public final class CgmesUtils {
         }
 
         // Get and add available files in the zip package
-        List<String> filenames = availableFileDependencies.stream().map(e -> casesDirectory + File.separator + e).collect(Collectors.toList());
-        for (String s : filenames) {
-            TransferableFile file = sftpConnection.getFile(s);
+        for (Map.Entry<String, String> availableFile : availableFileDependencies.entrySet()) {
+            TransferableFile file = acquisitionServer.getFile(availableFile.getKey(), availableFile.getValue());
             LOGGER.info("assembling available file {} into CGMES {} file", file.getName(), cgmesFileName);
             emptyZipPackager.addBytes(file.getName().replace(".zip", ".xml"), getZipInputStream(file.getData()).readAllBytes());
         }
