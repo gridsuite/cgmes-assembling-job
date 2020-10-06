@@ -58,14 +58,14 @@ public final class ProfilesAcquisitionJob {
                     .stream()
                     .filter(file -> CgmesUtils.isValidProfileFileName(file.getKey()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (x, y) -> y, LinkedHashMap::new));
-            LOGGER.info("{} valid files found on SFTP server", filesToAcquire.size());
+            LOGGER.info("{} valid files found on acquisition server", filesToAcquire.size());
 
             // Get SV files
             Map<String, String> filesSV = filesToAcquire.entrySet()
                     .stream()
                     .filter(file -> CgmesUtils.isSVFile(file.getKey()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (x, y) -> y, LinkedHashMap::new));
-            LOGGER.info("{} valid SV files found on SFTP server", filesSV.size());
+            LOGGER.info("{} valid SV files found on acquisition server", filesSV.size());
 
             List<String> filesHandled = new ArrayList<>();
             List<String> filesAlreadyHandled = new ArrayList<>();

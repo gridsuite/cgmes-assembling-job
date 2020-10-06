@@ -11,6 +11,12 @@ import com.github.nosan.embedded.cassandra.junit4.test.CassandraRule;
 import com.github.stefanbirkner.fakesftpserver.rule.FakeSftpServerRule;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.*;
+import org.mockftpserver.fake.FakeFtpServer;
+import org.mockftpserver.fake.UserAccount;
+import org.mockftpserver.fake.filesystem.DirectoryEntry;
+import org.mockftpserver.fake.filesystem.FileEntry;
+import org.mockftpserver.fake.filesystem.FileSystem;
+import org.mockftpserver.fake.filesystem.UnixFakeFileSystem;
 import org.mockserver.junit.MockServerRule;
 import org.mockserver.matchers.Times;
 
@@ -75,21 +81,58 @@ public class ProfilesAcquisitionJobTest {
         SFTP_SERVER_RULE.putFile("/cases/case1.iidm", "fake file content 1", UTF_8);
         SFTP_SERVER_RULE.putFile("/cases/case2.iidm", "fake file content 2", UTF_8);
 
-        try (AcquisitionServer acquisitionServer = new AcquisitionServer("sftp://localhost:2222", "dummy", "dummy")) {
+        String acquisitionServerUrl = "sftp://localhost:2222";
+        try (AcquisitionServer acquisitionServer = new AcquisitionServer(acquisitionServerUrl, "dummy", "dummy")) {
             acquisitionServer.open();
             Map<String, String> retrievedFiles = acquisitionServer.listFiles("./cases");
             assertEquals(2, retrievedFiles.size());
 
-            TransferableFile file1 = acquisitionServer.getFile("case1.iidm", "sftp://localhost:2222/cases/case1.iidm");
+            TransferableFile file1 = acquisitionServer.getFile("case1.iidm", acquisitionServerUrl + "/cases/case1.iidm");
             assertEquals("case1.iidm", file1.getName());
             assertEquals("fake file content 1", new String(file1.getData(), UTF_8));
 
-            TransferableFile file2 = acquisitionServer.getFile("case2.iidm", "sftp://localhost:2222/cases/case2.iidm");
+            TransferableFile file2 = acquisitionServer.getFile("case2.iidm", acquisitionServerUrl + "/cases/case2.iidm");
             assertEquals("case2.iidm", file2.getName());
             assertEquals("fake file content 2", new String(file2.getData(), UTF_8));
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Test
+    public void testFtpAcquisition() throws IOException {
+
+        FileSystem fileSystem = new UnixFakeFileSystem();
+        fileSystem.add(new DirectoryEntry("/cases"));
+        fileSystem.add(new FileEntry("/cases/case1.iidm", "fake file content 1"));
+        fileSystem.add(new FileEntry("/cases/case2.iidm", "fake file content 2"));
+
+        FakeFtpServer fakeFtpServer = new FakeFtpServer();
+        fakeFtpServer.addUserAccount(new UserAccount("dummy_ftp", "dummy_ftp", "/"));
+        fakeFtpServer.setFileSystem(fileSystem);
+        fakeFtpServer.setServerControlPort(0);
+
+        fakeFtpServer.start();
+
+        String acquisitionServerUrl = "ftp://localhost:" + fakeFtpServer.getServerControlPort();
+        try (AcquisitionServer acquisitionServer = new AcquisitionServer(acquisitionServerUrl, "dummy_ftp", "dummy_ftp")) {
+            acquisitionServer.open();
+            Map<String, String> retrievedFiles = acquisitionServer.listFiles("./cases");
+            assertEquals(2, retrievedFiles.size());
+
+            TransferableFile file1 = acquisitionServer.getFile("case1.iidm", acquisitionServerUrl + "/cases/case1.iidm");
+            assertEquals("case1.iidm", file1.getName());
+            assertEquals("fake file content 1", new String(file1.getData(), UTF_8));
+
+            TransferableFile file2 = acquisitionServer.getFile("case2.iidm", acquisitionServerUrl + "/cases/case2.iidm");
+            assertEquals("case2.iidm", file2.getName());
+            assertEquals("fake file content 2", new String(file2.getData(), UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            fakeFtpServer.stop();
+        }
+
     }
 
     @Test
@@ -280,17 +323,18 @@ public class ProfilesAcquisitionJobTest {
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_SSH_002.zip", "fake file content 3", UTF_8);
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_TP_002.zip", "fake file content 4", UTF_8);
 
-        try (AcquisitionServer acquisitionServer = new AcquisitionServer("sftp://localhost:2222", "dummy", "dummy")) {
+        String acquisitionServerUrl = "sftp://localhost:2222";
+        try (AcquisitionServer acquisitionServer = new AcquisitionServer(acquisitionServerUrl, "dummy", "dummy")) {
             acquisitionServer.open();
             Map<String, String> retrievedFiles = acquisitionServer.listFiles("./cases");
             assertEquals(4, retrievedFiles.size());
 
-            TransferableFile file1 = acquisitionServer.getFile("20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip", "sftp://localhost:2222/cases/20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip");
+            TransferableFile file1 = acquisitionServer.getFile("20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip", acquisitionServerUrl + "/cases/20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip");
             assertTrue(CgmesUtils.isValidProfileFileName(file1.getName()));
             assertEquals("20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip", file1.getName());
             assertEquals("fake file content 1", new String(file1.getData(), UTF_8));
 
-            TransferableFile file2 = acquisitionServer.getFile("20200817T1705Z__RTEFRANCE-FR_EQ_002.zip", "sftp://localhost:2222/cases/20200817T1705Z__RTEFRANCE-FR_EQ_002.zip");
+            TransferableFile file2 = acquisitionServer.getFile("20200817T1705Z__RTEFRANCE-FR_EQ_002.zip", acquisitionServerUrl + "/cases/20200817T1705Z__RTEFRANCE-FR_EQ_002.zip");
             assertTrue(CgmesUtils.isValidProfileFileName(file2.getName()));
             assertEquals("20200817T1705Z__RTEFRANCE-FR_EQ_002.zip", file2.getName());
             assertEquals("fake file content 2", new String(file2.getData(), UTF_8));
