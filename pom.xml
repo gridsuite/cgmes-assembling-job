@@ -48,10 +48,13 @@
 
         <gridsuite-dependencies.version>1</gridsuite-dependencies.version>
 
-        <sshj.version>0.29.0</sshj.version>
+        <jcraft.version>0.1.55</jcraft.version>
         <fake.sftp.server.version>2.0.1</fake.sftp.server.version>
+        <mock.ftp.server.version>2.7.1</mock.ftp.server.version>
         <mockserver.version>5.10.0</mockserver.version>
         <org.json.version>20200518</org.json.version>
+        <apache.commons.vfs2.version>2.6.0</apache.commons.vfs2.version>
+        <commons.net.version>3.7</commons.net.version>
     </properties>
 
     <build>
@@ -95,14 +98,29 @@
 
             <!-- project specific dependencies -->
             <dependency>
-                <groupId>com.hierynomus</groupId>
-                <artifactId>sshj</artifactId>
-                <version>${sshj.version}</version>
+                <groupId>com.jcraft</groupId>
+                <artifactId>jsch</artifactId>
+                <version>${jcraft.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-net</groupId>
+                <artifactId>commons-net</artifactId>
+                <version>${commons.net.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-vfs2</artifactId>
+                <version>${apache.commons.vfs2.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.stefanbirkner</groupId>
                 <artifactId>fake-sftp-server-rule</artifactId>
                 <version>${fake.sftp.server.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mockftpserver</groupId>
+                <artifactId>MockFtpServer</artifactId>
+                <version>${mock.ftp.server.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.mock-server</groupId>
@@ -125,6 +143,10 @@
     <dependencies>
         <!-- Compilation dependencies -->
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-vfs2</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-commons</artifactId>
         </dependency>
@@ -135,10 +157,6 @@
         <dependency>
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.hierynomus</groupId>
-            <artifactId>sshj</artifactId>
         </dependency>
         <dependency>
             <groupId>org.json</groupId>
@@ -156,8 +174,23 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-config-classic</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-net</groupId>
+            <artifactId>commons-net</artifactId>
             <scope>runtime</scope>
         </dependency>
 
@@ -190,6 +223,11 @@
         <dependency>
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-junit-rule</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockftpserver</groupId>
+            <artifactId>MockFtpServer</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
