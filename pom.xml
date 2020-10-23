@@ -46,7 +46,7 @@
     <properties>
         <java.version>11</java.version>
 
-        <gridsuite-dependencies.version>2</gridsuite-dependencies.version>
+        <gridsuite-dependencies.version>3</gridsuite-dependencies.version>
 
         <jcraft.version>0.1.55</jcraft.version>
         <fake.sftp.server.version>2.0.1</fake.sftp.server.version>
