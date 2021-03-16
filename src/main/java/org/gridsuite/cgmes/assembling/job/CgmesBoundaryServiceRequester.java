@@ -7,6 +7,7 @@
 package org.gridsuite.cgmes.assembling.job;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.json.JSONObject;
@@ -17,6 +18,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
@@ -37,7 +40,6 @@ public class CgmesBoundaryServiceRequester {
     }
 
     public Pair<String, byte[]> getBoundary(String boundaryId) {
-
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(serviceUrl + API_VERSION + "/boundaries/" + boundaryId))
@@ -62,7 +64,36 @@ public class CgmesBoundaryServiceRequester {
             LOGGER.error("Interruption when getting boundary with id {}", boundaryId);
             Thread.currentThread().interrupt();
         }
+        return null;
+    }
 
+    public Map<String, byte[]> getLastBoundaries() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(serviceUrl + API_VERSION + "/boundaries/last"))
+                .GET()
+                .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+
+            if (response.statusCode() == 200) {
+                String json = response.body();
+
+                Map<String, byte[]> result = new HashMap<>();
+                JSONArray array = new JSONArray(json);
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject obj = array.getJSONObject(i);
+                    result.put(obj.getString("filename"), obj.getString("boundary").getBytes(StandardCharsets.UTF_8));
+                }
+                return result;
+            }
+        } catch (IOException e) {
+            LOGGER.error("I/O Error while getting last boundaries");
+        } catch (InterruptedException e) {
+            LOGGER.error("Interruption when getting last boundaries");
+            Thread.currentThread().interrupt();
+        }
         return null;
     }
 }
