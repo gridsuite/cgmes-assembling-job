@@ -139,7 +139,7 @@ public final class CgmesUtils {
                                                    AcquisitionServer acquisitionServer, CgmesBoundaryServiceRequester boundaryServiceRequester,
                                                    boolean dependenciesStrictMode) throws IOException {
         // test if all needed individual profiles are available
-        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(filename -> getValidProfileFileName(filename)).collect(Collectors.toSet());
+        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(CgmesUtils::getValidProfileFileName).collect(Collectors.toSet());
         if (!availableProfiles.equals(NEEDED_PROFILES)) {
             return null;
         }
