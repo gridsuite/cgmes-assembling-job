@@ -6,7 +6,7 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
 import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +18,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
@@ -39,7 +39,7 @@ public class CgmesBoundaryServiceRequester {
         httpClient = HttpClient.newHttpClient();
     }
 
-    public Pair<String, byte[]> getBoundary(String boundaryId) {
+    public BoundaryInfo getBoundary(String boundaryId) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(serviceUrl + API_VERSION + "/boundaries/" + boundaryId))
@@ -51,12 +51,8 @@ public class CgmesBoundaryServiceRequester {
 
             if (response.statusCode() == 200) {
                 String json = response.body();
-
                 JSONObject obj = new JSONObject(json);
-                String boundaryXml = obj.getString("boundary");
-                String filename = obj.getString("filename");
-
-                return Pair.of(filename, boundaryXml.getBytes(StandardCharsets.UTF_8));
+                return new BoundaryInfo(obj.getString("id"), obj.getString("filename"), obj.getString("boundary").getBytes(StandardCharsets.UTF_8));
             }
         } catch (IOException e) {
             LOGGER.error("I/O Error while getting boundary with id {}", boundaryId);
@@ -67,7 +63,7 @@ public class CgmesBoundaryServiceRequester {
         return null;
     }
 
-    public Map<String, byte[]> getLastBoundaries() {
+    public List<BoundaryInfo> getLastBoundaries() {
         try {
             HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(serviceUrl + API_VERSION + "/boundaries/last"))
@@ -80,11 +76,11 @@ public class CgmesBoundaryServiceRequester {
             if (response.statusCode() == 200) {
                 String json = response.body();
 
-                Map<String, byte[]> result = new HashMap<>();
+                List<BoundaryInfo> result = new ArrayList<>();
                 JSONArray array = new JSONArray(json);
                 for (int i = 0; i < array.length(); i++) {
                     JSONObject obj = array.getJSONObject(i);
-                    result.put(obj.getString("filename"), obj.getString("boundary").getBytes(StandardCharsets.UTF_8));
+                    result.add(new BoundaryInfo(obj.getString("id"), obj.getString("filename"), obj.getString("boundary").getBytes(StandardCharsets.UTF_8)));
                 }
                 return result;
             }

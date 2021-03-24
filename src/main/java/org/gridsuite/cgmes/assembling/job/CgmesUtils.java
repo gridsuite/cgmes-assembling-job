@@ -6,16 +6,13 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import com.powsybl.cgmes.model.FullModel;
 import com.powsybl.commons.compress.ZipPackager;
-import org.apache.commons.lang3.tuple.Pair;
+import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
@@ -152,34 +149,27 @@ public final class CgmesUtils {
         String cgmesFileName = filenameSV.replace("_" + SV_MODEL_PART, "");
 
         // Search for missing dependencies in the boundaries database table
-        Map<String, byte[]> boundaries = new HashMap<>();
+        List<BoundaryInfo> boundaries = new ArrayList<>();
         for (String depend : missingDependencies) {
-            Pair<String, byte[]> boundary = boundaryServiceRequester.getBoundary(depend);
+            BoundaryInfo boundary = boundaryServiceRequester.getBoundary(depend);
             if (boundary == null) {
                 LOGGER.warn("{} dependency not found in cgmes boundary server", depend);
                 if (dependenciesStrictMode) {
                     return null;
                 }
             } else {
-                boundaries.put(boundary.getLeft(), boundary.getRight());
+                boundaries.add(boundary);
             }
         }
 
         // if at least one boundary is missing, we use the last boundaries
         if (boundaries.size() < 2) {
             boundaries.clear();
-            boundaries.putAll(boundaryServiceRequester.getLastBoundaries());
+            boundaries.addAll(boundaryServiceRequester.getLastBoundaries());
         }
-        boundaries.entrySet().stream().forEach(boundary -> {
-            emptyZipPackager.addBytes(boundary.getKey(), boundary.getValue());
-
-            // Log uuid of boundary set used for assembling
-            try (Reader reader = new InputStreamReader(new ByteArrayInputStream(boundary.getValue()))) {
-                FullModel fullModel = FullModel.parse(reader);
-                LOGGER.info("assembling boundary file {} with uuid {} into CGMES {} file", boundary.getKey(), fullModel.getId(), cgmesFileName);
-            } catch (IOException e) {
-                LOGGER.info("Exception getting uuid of boundary file {}", boundary.getKey());
-            }
+        boundaries.forEach(boundary -> {
+            LOGGER.info("assembling boundary file {} with uuid {} into CGMES {} file", boundary.getFilename(), boundary.getId(), cgmesFileName);
+            emptyZipPackager.addBytes(boundary.getFilename(), boundary.getBoundary());
         });
 
         // Get and add available individual profile files in the zip package

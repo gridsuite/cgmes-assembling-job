@@ -11,7 +11,7 @@ import com.github.nosan.embedded.cassandra.junit4.test.CassandraRule;
 import com.github.stefanbirkner.fakesftpserver.rule.FakeSftpServerRule;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.apache.commons.lang3.tuple.Pair;
+import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
 import org.junit.*;
 import org.mockftpserver.fake.FakeFtpServer;
 import org.mockftpserver.fake.UserAccount;
@@ -128,9 +128,10 @@ public class ProfilesAcquisitionJobTest {
         CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester("http://localhost:55487/");
 
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}", 200);
-        Pair<String, byte[]> res = cgmesBoundaryServiceRequester.getBoundary("urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358");
-        assertEquals("titi.xml", res.getLeft());
-        assertEquals("content1", new String(res.getRight(), UTF_8));
+        BoundaryInfo res = cgmesBoundaryServiceRequester.getBoundary("urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358");
+        assertEquals("titi.xml", res.getFilename());
+        assertEquals("content1", new String(res.getBoundary(), UTF_8));
+        assertEquals("urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", res.getId());
 
         mockServer.getClient().clear(request());
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", null, 500);
@@ -142,12 +143,14 @@ public class ProfilesAcquisitionJobTest {
         CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester("http://localhost:55487/");
 
         expectRequestBoundary("/v1/boundaries/last", "[{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:11111111-2222-3333-4444-555555555555\",\"boundary\":\"content\"},{\"filename\":\"tutu.xml\",\"id\":\"urn:uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\"boundary\":\"content2\"}]", 200);
-        Map<String, byte[]> res = cgmesBoundaryServiceRequester.getLastBoundaries();
+        List<BoundaryInfo> res = cgmesBoundaryServiceRequester.getLastBoundaries();
         assertEquals(2, res.size());
-        assertTrue(res.containsKey("titi.xml"));
-        assertTrue(res.containsKey("tutu.xml"));
-        assertEquals("content", new String(res.get("titi.xml"), UTF_8));
-        assertEquals("content2", new String(res.get("tutu.xml"), UTF_8));
+        assertEquals("titi.xml", res.get(0).getFilename());
+        assertEquals("tutu.xml", res.get(1).getFilename());
+        assertEquals("urn:uuid:11111111-2222-3333-4444-555555555555", res.get(0).getId());
+        assertEquals("urn:uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", res.get(1).getId());
+        assertEquals("content", new String(res.get(0).getBoundary(), UTF_8));
+        assertEquals("content2", new String(res.get(1).getBoundary(), UTF_8));
 
         mockServer.getClient().clear(request());
         expectRequestBoundary("/v1/boundaries/last", null, 500);
