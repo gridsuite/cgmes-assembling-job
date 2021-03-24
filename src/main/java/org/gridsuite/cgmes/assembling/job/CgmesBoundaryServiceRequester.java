@@ -19,6 +19,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -90,6 +91,6 @@ public class CgmesBoundaryServiceRequester {
             LOGGER.error("Interruption when getting last boundaries");
             Thread.currentThread().interrupt();
         }
-        return null;
+        return Collections.emptyList();
     }
 }

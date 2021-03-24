@@ -153,8 +153,8 @@ public class ProfilesAcquisitionJobTest {
         assertEquals("content2", new String(res.get(1).getBoundary(), UTF_8));
 
         mockServer.getClient().clear(request());
-        expectRequestBoundary("/v1/boundaries/last", null, 500);
-        assertNull(cgmesBoundaryServiceRequester.getLastBoundaries());
+        expectRequestBoundary("/v1/boundaries/last", "[]", 500);
+        assertTrue(cgmesBoundaryServiceRequester.getLastBoundaries().isEmpty());
     }
 
     private void expectRequestBoundary(String path, String response, Integer status) {
@@ -292,7 +292,7 @@ public class ProfilesAcquisitionJobTest {
         mockServer.getClient().clear(request());
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", null, 500);
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", null, 500);
-        expectRequestBoundary("/v1/boundaries/last", null, 500);
+        expectRequestBoundary("/v1/boundaries/last", "[]", 500);
         expectRequestCase("/v1/cases/public", 200);
         ProfilesAcquisitionJob.main(args);
 

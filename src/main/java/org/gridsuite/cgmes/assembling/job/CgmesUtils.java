@@ -148,7 +148,7 @@ public final class CgmesUtils {
 
         String cgmesFileName = filenameSV.replace("_" + SV_MODEL_PART, "");
 
-        // Search for missing dependencies in the boundaries database table
+        // Search for missing referenced dependencies in the boundaries database table
         List<BoundaryInfo> boundaries = new ArrayList<>();
         for (String depend : missingDependencies) {
             BoundaryInfo boundary = boundaryServiceRequester.getBoundary(depend);
@@ -162,11 +162,15 @@ public final class CgmesUtils {
             }
         }
 
-        // if at least one boundary is missing, we use the last boundaries
+        // if at least one referenced boundary is missing, we use the last boundaries in the database
         if (boundaries.size() < 2) {
             boundaries.clear();
             boundaries.addAll(boundaryServiceRequester.getLastBoundaries());
         }
+        if (boundaries.size() < 2) {
+            return null;
+        }
+
         boundaries.forEach(boundary -> {
             LOGGER.info("assembling boundary file {} with uuid {} into CGMES {} file", boundary.getFilename(), boundary.getId(), cgmesFileName);
             emptyZipPackager.addBytes(boundary.getFilename(), boundary.getBoundary());
