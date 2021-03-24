@@ -26,14 +26,13 @@ import java.util.List;
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
 public class CgmesBoundaryServiceRequester {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(CgmesBoundaryServiceRequester.class);
-
     private static final String API_VERSION = "v1";
-
     private final String serviceUrl;
-
     private final HttpClient httpClient;
+    private static final String ID_KEY = "id";
+    private static final String FILE_NAME_KEY = "filename";
+    private static final String BOUNDARY_KEY = "boundary";
 
     public CgmesBoundaryServiceRequester(String serviceUrl) {
         this.serviceUrl = serviceUrl;
@@ -53,7 +52,7 @@ public class CgmesBoundaryServiceRequester {
             if (response.statusCode() == 200) {
                 String json = response.body();
                 JSONObject obj = new JSONObject(json);
-                return new BoundaryInfo(obj.getString("id"), obj.getString("filename"), obj.getString("boundary").getBytes(StandardCharsets.UTF_8));
+                return new BoundaryInfo(obj.getString(ID_KEY), obj.getString(FILE_NAME_KEY), obj.getString(BOUNDARY_KEY).getBytes(StandardCharsets.UTF_8));
             }
         } catch (IOException e) {
             LOGGER.error("I/O Error while getting boundary with id {}", boundaryId);
@@ -81,7 +80,7 @@ public class CgmesBoundaryServiceRequester {
                 JSONArray array = new JSONArray(json);
                 for (int i = 0; i < array.length(); i++) {
                     JSONObject obj = array.getJSONObject(i);
-                    result.add(new BoundaryInfo(obj.getString("id"), obj.getString("filename"), obj.getString("boundary").getBytes(StandardCharsets.UTF_8)));
+                    result.add(new BoundaryInfo(obj.getString(ID_KEY), obj.getString(FILE_NAME_KEY), obj.getString(BOUNDARY_KEY).getBytes(StandardCharsets.UTF_8)));
                 }
                 return result;
             }
