@@ -6,6 +6,7 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
+import com.powsybl.cgmes.model.FullModel;
 import com.powsybl.commons.compress.ZipPackager;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
@@ -13,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
@@ -168,8 +171,15 @@ public final class CgmesUtils {
             boundaries.putAll(boundaryServiceRequester.getLastBoundaries());
         }
         boundaries.entrySet().stream().forEach(boundary -> {
-            LOGGER.info("assembling boundary file {} into CGMES {} file", boundary.getKey(), cgmesFileName);
             emptyZipPackager.addBytes(boundary.getKey(), boundary.getValue());
+
+            // Log uuid of boundary set used for assembling
+            try (Reader reader = new InputStreamReader(new ByteArrayInputStream(boundary.getValue()))) {
+                FullModel fullModel = FullModel.parse(reader);
+                LOGGER.info("assembling boundary file {} with uuid {} into CGMES {} file", boundary.getKey(), fullModel.getId(), cgmesFileName);
+            } catch (IOException e) {
+                LOGGER.info("Exception getting uuid of boundary file {}", boundary.getKey());
+            }
         });
 
         // Get and add available individual profile files in the zip package
