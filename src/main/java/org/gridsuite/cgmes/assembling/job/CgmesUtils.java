@@ -153,7 +153,7 @@ public final class CgmesUtils {
         for (String depend : missingDependencies) {
             BoundaryInfo boundary = boundaryServiceRequester.getBoundary(depend);
             if (boundary == null) {
-                LOGGER.warn("{} dependency not found in cgmes boundary server", depend);
+                LOGGER.warn("{} referenced dependency not found in cgmes boundary server", depend);
                 if (dependenciesStrictMode) {
                     return null;
                 }
@@ -168,6 +168,7 @@ public final class CgmesUtils {
             boundaries.addAll(boundaryServiceRequester.getLastBoundaries());
         }
         if (boundaries.size() < 2) {
+            LOGGER.warn("No boundaries found in cgmes boundary server");
             return null;
         }
 
