@@ -48,13 +48,18 @@ public final class ProfilesAcquisitionJob {
                                                                          moduleConfigAcquisitionServer.getStringProperty("username"),
                                                                          moduleConfigAcquisitionServer.getStringProperty("password"));
              CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
-
             acquisitionServer.open();
 
             cgmesAssemblingLogger.connectDb(moduleConfigCassandra.getStringProperty("contact-points"), moduleConfigCassandra.getIntProperty("port"));
 
             String casesDirectory = moduleConfigAcquisitionServer.getStringProperty("cases-directory");
             String acquisitionServerLabel = moduleConfigAcquisitionServer.getStringProperty("label");
+
+            // Get list of all tsos and business processes from cgmes boundary server
+            Set<String> tsos = cgmesBoundaryServiceRequester.getTsosList();
+            Set<String> businessProcesses = cgmesBoundaryServiceRequester.getBusinessProcessesList();
+            CgmesUtils.setNeededSourcingActors(tsos);
+            CgmesUtils.setNeededBusinessProcesses(businessProcesses);
 
             // Get valid zip files
             Map<String, String> filesToAcquire = acquisitionServer.listFiles(casesDirectory).entrySet()

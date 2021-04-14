@@ -20,7 +20,9 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
@@ -91,5 +93,61 @@ public class CgmesBoundaryServiceRequester {
             Thread.currentThread().interrupt();
         }
         return Collections.emptyList();
+    }
+
+    public Set<String> getTsosList() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(serviceUrl + API_VERSION + "/tsos"))
+                .GET()
+                .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+
+            if (response.statusCode() == 200) {
+                String json = response.body();
+                Set<String> result = new HashSet<>();
+                JSONArray array = new JSONArray(json);
+                for (int i = 0; i < array.length(); i++) {
+                    result.add(array.getString(i));
+                }
+                return result;
+            }
+        } catch (IOException e) {
+            LOGGER.error("I/O Error while getting list of tsos");
+        } catch (InterruptedException e) {
+            LOGGER.error("Interruption when getting list of tsos");
+            Thread.currentThread().interrupt();
+        }
+        return null;
+    }
+
+    public Set<String> getBusinessProcessesList() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(serviceUrl + API_VERSION + "/business-processes"))
+                .GET()
+                .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+
+            if (response.statusCode() == 200) {
+                String json = response.body();
+                Set<String> result = new HashSet<>();
+                JSONArray array = new JSONArray(json);
+                for (int i = 0; i < array.length(); i++) {
+                    result.add(array.getString(i));
+                }
+                return result;
+            }
+        } catch (IOException e) {
+            LOGGER.error("I/O Error while getting list of business processes");
+        } catch (InterruptedException e) {
+            LOGGER.error("Interruption when getting list of business processes");
+            Thread.currentThread().interrupt();
+        }
+        return null;
     }
 }

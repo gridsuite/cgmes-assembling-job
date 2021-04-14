@@ -170,6 +170,20 @@ public class ProfilesAcquisitionJobTest {
             .respond(response().withStatusCode(status));
     }
 
+    private void expectRequestTsos(String path, String response, Integer status) {
+        mockServer.getClient().when(request().withMethod("GET").withPath(path),
+            Times.exactly(1))
+            .respond(response().withStatusCode(status)
+                .withBody(response));
+    }
+
+    private void expectRequestBusinessProcesses(String path, String response, Integer status) {
+        mockServer.getClient().when(request().withMethod("GET").withPath(path),
+            Times.exactly(1))
+            .respond(response().withStatusCode(status)
+                .withBody(response));
+    }
+
     @Test
     public void testImportWithReferencedBoundaries() throws IOException {
         SFTP_SERVER_RULE.createDirectory("/cases");
@@ -192,6 +206,8 @@ public class ProfilesAcquisitionJobTest {
 
         // 2 files on SFTP server (SV and SSH), 2 cases will be handled, but no import will be requested (missing dependencies)
         //
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01", null, 500);
         ProfilesAcquisitionJob.main(args);
@@ -202,6 +218,8 @@ public class ProfilesAcquisitionJobTest {
         // No new files on SFTP server, no import requested (missing dependencies)
         //
         mockServer.getClient().clear(request());
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01", null, 500);
         ProfilesAcquisitionJob.main(args);
@@ -215,6 +233,8 @@ public class ProfilesAcquisitionJobTest {
         }
 
         mockServer.getClient().clear(request());
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01", null, 500);
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
@@ -230,6 +250,8 @@ public class ProfilesAcquisitionJobTest {
         }
 
         mockServer.getClient().clear(request());
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
         ProfilesAcquisitionJob.main(args);
@@ -238,6 +260,8 @@ public class ProfilesAcquisitionJobTest {
 
         // dependencies-strict-mode=true and not all referenced boundaries available
         mockServer.getClient().clear(request());
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", null, 500);
         expectRequestCase("/v1/cases/public", 200);
@@ -246,6 +270,8 @@ public class ProfilesAcquisitionJobTest {
 
         // dependencies-strict-mode=false and all referenced boundaries available, and expect import case
         mockServer.getClient().clear(request());
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
         expectRequestCase("/v1/cases/public", 200);
@@ -281,6 +307,8 @@ public class ProfilesAcquisitionJobTest {
         String lastBoundary2Content = StringEscapeUtils.escapeJava(IOUtils.toString(getClass().getResourceAsStream("/last_tpbd.xml"), Charset.defaultCharset()));
 
         // All individual profile files on SFTP server, no boundaries available
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         ProfilesAcquisitionJob.main(args);
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_SSH_001.zip", "my_sftp_server"));
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
@@ -290,6 +318,8 @@ public class ProfilesAcquisitionJobTest {
 
         // retry with import in case server available and referenced boundaries not available
         mockServer.getClient().clear(request());
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", null, 500);
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", null, 500);
         expectRequestBoundary("/v1/boundaries/last", "[]", 500);
@@ -300,6 +330,8 @@ public class ProfilesAcquisitionJobTest {
 
         // retry with last boundaries and import in case server available
         mockServer.getClient().clear(request());
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", null, 500);
         expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", null, 500);
         expectRequestBoundary("/v1/boundaries/last", "[{\"filename\":\"last_eqbd.xml\",\"id\":\"urn:uuid:11111111-2222-3333-4444-555555555555\",\"boundary\":\"" + lastBoundary1Content + "\"},{\"filename\":\"last_tpbd.xml\",\"id\":\"urn:uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\"boundary\":\"" + lastBoundary2Content + "\"}]", 200);
@@ -333,6 +365,8 @@ public class ProfilesAcquisitionJobTest {
 
         String[] args = null;
 
+        expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
+        expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
         ProfilesAcquisitionJob.main(args);
 
         assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_SSH_001.zip", "my_sftp_server"));
@@ -348,6 +382,9 @@ public class ProfilesAcquisitionJobTest {
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z__RTEFRANCE-FR_EQ_002.zip", "fake file content 2", UTF_8);
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_SSH_002.zip", "fake file content 3", UTF_8);
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_TP_002.zip", "fake file content 4", UTF_8);
+
+        CgmesUtils.setNeededSourcingActors(Set.of("RTEFRANCE-FR"));
+        CgmesUtils.setNeededBusinessProcesses(Set.of("1D"));
 
         String acquisitionServerUrl = "sftp://localhost:2222";
         try (AcquisitionServer acquisitionServer = new AcquisitionServer(acquisitionServerUrl, "dummy", "dummy")) {

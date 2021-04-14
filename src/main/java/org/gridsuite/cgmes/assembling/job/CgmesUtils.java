@@ -22,22 +22,27 @@ import java.util.zip.ZipInputStream;
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
 public final class CgmesUtils {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(CgmesUtils.class);
-
-    // We add sourcingActor "XX" for test purpose
-    private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "BE", "NL", "XX"));
-
     private static final String SV_MODEL_PART = "SV";
     private static final String EQ_MODEL_PART = "EQ";
     private static final String SSH_MODEL_PART = "SSH";
     private static final String TP_MODEL_PART = "TP";
-
     private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList(EQ_MODEL_PART, SSH_MODEL_PART, SV_MODEL_PART, TP_MODEL_PART));
+    private static final String DOT_REGEX = "\\.";
+    private static final String UNDERSCORE_REGEX = "\\_";
 
-    private static final Set<String> NEEDED_BUSINESS_PROCESS = new TreeSet<>(Arrays.asList("YR", "MO", "WK", "2D", "1D", "RT"));
+    private static Set<String> neededSourcingActors;
+    private static Set<String> neededBusinessProcesses;
 
     private CgmesUtils() {
+    }
+
+    public static void setNeededSourcingActors(Set<String> tsos) {
+        neededSourcingActors = tsos;
+    }
+
+    public static void setNeededBusinessProcesses(Set<String> businessProcesses) {
+        neededBusinessProcesses = businessProcesses;
     }
 
   /*The file should have the following structure:
@@ -48,14 +53,11 @@ public final class CgmesUtils {
     <effectiveDateTime>__<sourcingActor>_EQ_<fileVersion>.zip (two underscores between <effectiveDateTime> and <sourcingActor>)
     where :
     <effectiveDateTime>: UTC datetime (YYYYMMDDTHHmmZ)
-    <businessProcess>: String (YR, MO, WK, 2D, 1D, 23, …, 01 or RT)
-    <sourcingActor>: String (REE, REN, RTEFRANCE, REE-ES, REN-PT or RTEFRANCE-FR)
+    <businessProcess>: String (YR, MO, WK, 2D, 1D, 23, ..., 01, RT, ....)
+    <sourcingActor>: String (REE, REN, RTEFRANCE, ....)
     <modelPart>: String (EQ, TP, SSH or SV)
     <fileVersion>: three characters long positive integer number between 000 and 999. The most recent version has to be used
      */
-    private static final String DOT_REGEX = "\\.";
-    private static final String UNDERSCORE_REGEX = "\\_";
-
     public static String getValidProfileFileName(String filename) {
         if (filename.split(DOT_REGEX).length == 2) {
             String base = filename.split(DOT_REGEX)[0];
@@ -85,14 +87,14 @@ public final class CgmesUtils {
     }
 
     private static boolean isValidSourcingActor(String sourcingActor) {
-        return NEEDED_SOURCING_ACTORS.contains(sourcingActor);
+        return neededSourcingActors.contains(sourcingActor);
     }
 
     private static boolean isValidBusinessProcess(String businessProcess, String modelPart) {
         if (businessProcess.isEmpty()) {
             return modelPart.equals(EQ_MODEL_PART);
         } else {
-            if (NEEDED_BUSINESS_PROCESS.contains(businessProcess)) {
+            if (neededBusinessProcesses.contains(businessProcess)) {
                 return true;
             } else {
                 try {
