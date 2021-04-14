@@ -35,6 +35,7 @@ public class CgmesBoundaryServiceRequester {
     private static final String ID_KEY = "id";
     private static final String FILE_NAME_KEY = "filename";
     private static final String BOUNDARY_KEY = "boundary";
+    private static final String MESSAGE_STATUS = "Cgmes boundary server response status: {}";
 
     public CgmesBoundaryServiceRequester(String serviceUrl) {
         this.serviceUrl = serviceUrl;
@@ -49,7 +50,7 @@ public class CgmesBoundaryServiceRequester {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+            LOGGER.info(MESSAGE_STATUS, response.statusCode());
 
             if (response.statusCode() == 200) {
                 String json = response.body();
@@ -73,7 +74,7 @@ public class CgmesBoundaryServiceRequester {
                 .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+            LOGGER.info(MESSAGE_STATUS, response.statusCode());
 
             if (response.statusCode() == 200) {
                 String json = response.body();
@@ -103,7 +104,7 @@ public class CgmesBoundaryServiceRequester {
                 .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+            LOGGER.info(MESSAGE_STATUS, response.statusCode());
 
             if (response.statusCode() == 200) {
                 String json = response.body();
@@ -115,9 +116,9 @@ public class CgmesBoundaryServiceRequester {
                 return result;
             }
         } catch (IOException e) {
-            LOGGER.error("I/O Error while getting list of " + listName);
+            LOGGER.error("I/O Error while getting list of {}", listName);
         } catch (InterruptedException e) {
-            LOGGER.error("Interruption when getting list of " + listName);
+            LOGGER.error("Interruption when getting list of {}", listName);
             Thread.currentThread().interrupt();
         }
         return Collections.emptySet();
