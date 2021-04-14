@@ -95,10 +95,10 @@ public class CgmesBoundaryServiceRequester {
         return Collections.emptyList();
     }
 
-    public Set<String> getTsosList() {
+    private Set<String> getList(String listName) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(serviceUrl + API_VERSION + "/tsos"))
+                .uri(URI.create(serviceUrl + API_VERSION + "/" + listName))
                 .GET()
                 .build();
 
@@ -115,39 +115,19 @@ public class CgmesBoundaryServiceRequester {
                 return result;
             }
         } catch (IOException e) {
-            LOGGER.error("I/O Error while getting list of tsos");
+            LOGGER.error("I/O Error while getting list of " + listName);
         } catch (InterruptedException e) {
-            LOGGER.error("Interruption when getting list of tsos");
+            LOGGER.error("Interruption when getting list of " + listName);
             Thread.currentThread().interrupt();
         }
-        return null;
+        return Collections.emptySet();
+    }
+
+    public Set<String> getTsosList() {
+        return getList("tsos");
     }
 
     public Set<String> getBusinessProcessesList() {
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(serviceUrl + API_VERSION + "/business-processes"))
-                .GET()
-                .build();
-
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
-
-            if (response.statusCode() == 200) {
-                String json = response.body();
-                Set<String> result = new HashSet<>();
-                JSONArray array = new JSONArray(json);
-                for (int i = 0; i < array.length(); i++) {
-                    result.add(array.getString(i));
-                }
-                return result;
-            }
-        } catch (IOException e) {
-            LOGGER.error("I/O Error while getting list of business processes");
-        } catch (InterruptedException e) {
-            LOGGER.error("Interruption when getting list of business processes");
-            Thread.currentThread().interrupt();
-        }
-        return null;
+        return getList("business-processes");
     }
 }
