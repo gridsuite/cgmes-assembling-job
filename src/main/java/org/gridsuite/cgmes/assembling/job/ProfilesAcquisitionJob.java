@@ -30,7 +30,10 @@ public final class ProfilesAcquisitionJob {
     }
 
     public static void main(String... args) {
+        handle(null);
+    }
 
+    public static void handle(Boolean dependenciesStrictMode) {
         PlatformConfig platformConfig = PlatformConfig.defaultConfig();
 
         ModuleConfig moduleConfigAcquisitionServer = platformConfig.getModuleConfig("acquisition-server");
@@ -111,7 +114,10 @@ public final class ProfilesAcquisitionJob {
 
                     // Assembling profiles
                     TransferableFile assembledFile = CgmesUtils.prepareFinalZip(fileInfo.getKey(), availableFileDependencies,
-                            missingDependencies, acquisitionServer, cgmesBoundaryServiceRequester);
+                        missingDependencies, acquisitionServer, cgmesBoundaryServiceRequester,
+                        dependenciesStrictMode == null
+                            ? moduleConfigAcquisitionServer.getBooleanProperty("dependencies-strict-mode", false)
+                            : dependenciesStrictMode);
 
                     if (assembledFile != null) {
                         // Import assembled file in the case server
@@ -142,6 +148,9 @@ public final class ProfilesAcquisitionJob {
             LOGGER.info("{} files already imported", filesAlreadyImported.size());
             filesAlreadyImported.forEach(f -> LOGGER.info("Assembled files with  '{}' file  already imported !!", f));
             LOGGER.info("=================================");
+        } catch (InterruptedException e) {
+            LOGGER.error("Interruption during assembling");
+            Thread.currentThread().interrupt();
         } catch (Exception exc) {
             LOGGER.error("Job execution error: {}", exc.getMessage());
         }

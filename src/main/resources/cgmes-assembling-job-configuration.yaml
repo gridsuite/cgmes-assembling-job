@@ -4,6 +4,7 @@ acquisition-server:
   password: my_password
   cases-directory: ./cases
   label: my_sftp_server
+  dependencies-strict-mode: false
 
 cassandra:
   contact-points: localhost

@@ -7,13 +7,14 @@
 package org.gridsuite.cgmes.assembling.job;
 
 import com.powsybl.commons.compress.ZipPackager;
-import org.apache.commons.lang3.tuple.Pair;
+import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
 
 /**
@@ -24,18 +25,19 @@ public final class CgmesUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CgmesUtils.class);
 
-    private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList("EQ", "SSH", "SV", "TP"));
-
     // We add sourcingActor "XX" for test purpose
     private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "BE", "NL", "XX"));
 
     private static final String SV_MODEL_PART = "SV";
-
     private static final String EQ_MODEL_PART = "EQ";
+    private static final String SSH_MODEL_PART = "SSH";
+    private static final String TP_MODEL_PART = "TP";
+
+    private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList(EQ_MODEL_PART, SSH_MODEL_PART, SV_MODEL_PART, TP_MODEL_PART));
 
     private static final Set<String> NEEDED_BUSINESS_PROCESS = new TreeSet<>(Arrays.asList("YR", "MO", "WK", "2D", "1D", "RT"));
 
-    private  CgmesUtils() {
+    private CgmesUtils() {
     }
 
   /*The file should have the following structure:
@@ -54,18 +56,22 @@ public final class CgmesUtils {
     private static final String DOT_REGEX = "\\.";
     private static final String UNDERSCORE_REGEX = "\\_";
 
-    public static boolean isValidProfileFileName(String filename) {
+    public static String getValidProfileFileName(String filename) {
         if (filename.split(DOT_REGEX).length == 2) {
             String base = filename.split(DOT_REGEX)[0];
             String ext = filename.split(DOT_REGEX)[1];
             if (ext.equals("zip") && base.split(UNDERSCORE_REGEX).length == 5) {
                 String[] parts = base.split(UNDERSCORE_REGEX);
                 if (isValidModelPart(parts[3]) && isValidBusinessProcess(parts[1], parts[3]) && isValidSourcingActor(parts[2]) && isValidModelVersion(parts[4])) {
-                    return true;
+                    return parts[3];
                 }
             }
         }
-        return false;
+        return null;
+    }
+
+    public static boolean isValidProfileFileName(String filename) {
+        return getValidProfileFileName(filename) != null;
     }
 
     private static boolean isValidModelVersion(String version) {
@@ -130,24 +136,48 @@ public final class CgmesUtils {
     }
 
     public static TransferableFile prepareFinalZip(String filenameSV, Map<String, String> availableFileDependencies, Set<String> missingDependencies,
-                                                   AcquisitionServer acquisitionServer, CgmesBoundaryServiceRequester boundaryServiceRequester) throws IOException {
+                                                   AcquisitionServer acquisitionServer, CgmesBoundaryServiceRequester boundaryServiceRequester,
+                                                   boolean dependenciesStrictMode) throws IOException {
+        // test if all needed individual profiles are available
+        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(CgmesUtils::getValidProfileFileName).collect(Collectors.toSet());
+        if (!availableProfiles.equals(NEEDED_PROFILES)) {
+            return null;
+        }
+
         ZipPackager emptyZipPackager = new ZipPackager();
 
         String cgmesFileName = filenameSV.replace("_" + SV_MODEL_PART, "");
 
-        // Search for missing dependencies in the boundaries database table
+        // Search for missing referenced dependencies in the boundaries database table
+        List<BoundaryInfo> boundaries = new ArrayList<>();
         for (String depend : missingDependencies) {
-            Pair<String, byte[]> boundary = boundaryServiceRequester.getBoundary(depend);
+            BoundaryInfo boundary = boundaryServiceRequester.getBoundary(depend);
             if (boundary == null) {
-                LOGGER.warn("{} dependency not found", depend);
-                return null;
+                LOGGER.warn("{} referenced dependency not found in cgmes boundary server", depend);
+                if (dependenciesStrictMode) {
+                    return null;
+                }
             } else {
-                LOGGER.info("assembling boundary file {} into CGMES {} file", boundary.getLeft(), cgmesFileName);
-                emptyZipPackager.addBytes(boundary.getLeft(), boundary.getRight());
+                boundaries.add(boundary);
             }
         }
 
-        // Get and add available files in the zip package
+        // if at least one referenced boundary is missing, we use the last boundaries in the database
+        if (boundaries.size() < 2) {
+            boundaries.clear();
+            boundaries.addAll(boundaryServiceRequester.getLastBoundaries());
+        }
+        if (boundaries.size() < 2) {
+            LOGGER.warn("No boundaries found in cgmes boundary server");
+            return null;
+        }
+
+        boundaries.forEach(boundary -> {
+            LOGGER.info("assembling boundary file {} with uuid {} into CGMES {} file", boundary.getFilename(), boundary.getId(), cgmesFileName);
+            emptyZipPackager.addBytes(boundary.getFilename(), boundary.getBoundary());
+        });
+
+        // Get and add available individual profile files in the zip package
         for (Map.Entry<String, String> availableFile : availableFileDependencies.entrySet()) {
             TransferableFile file = acquisitionServer.getFile(availableFile.getKey(), availableFile.getValue());
             LOGGER.info("assembling available file {} into CGMES {} file", file.getName(), cgmesFileName);
