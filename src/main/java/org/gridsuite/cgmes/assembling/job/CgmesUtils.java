@@ -91,21 +91,7 @@ public final class CgmesUtils {
     }
 
     private static boolean isValidBusinessProcess(String businessProcess, String modelPart) {
-        if (businessProcess.isEmpty()) {
-            return modelPart.equals(EQ_MODEL_PART);
-        } else {
-            if (neededBusinessProcesses.contains(businessProcess)) {
-                return true;
-            } else {
-                try {
-                    int v = Integer.parseInt(businessProcess);
-                    return v >= 1 && v <= 23;
-                } catch (NumberFormatException e) {
-                    LOGGER.warn("Invalid business process {}", businessProcess);
-                    return false;
-                }
-            }
-        }
+        return businessProcess.isEmpty() ? modelPart.equals(EQ_MODEL_PART) : neededBusinessProcesses.contains(businessProcess);
     }
 
     private static boolean isValidModelPart(String modelPart) {
