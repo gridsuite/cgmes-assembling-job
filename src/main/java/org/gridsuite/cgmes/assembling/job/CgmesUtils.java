@@ -26,7 +26,7 @@ public final class CgmesUtils {
     private static final Logger LOGGER = LoggerFactory.getLogger(CgmesUtils.class);
 
     // We add sourcingActor "XX" for test purpose
-    private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "BE", "NL", "XX"));
+    private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "ELIA", "TTN", "XX"));
 
     private static final String SV_MODEL_PART = "SV";
     private static final String EQ_MODEL_PART = "EQ";
