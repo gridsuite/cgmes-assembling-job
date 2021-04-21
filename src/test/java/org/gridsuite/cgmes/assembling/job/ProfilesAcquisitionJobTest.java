@@ -383,8 +383,8 @@ public class ProfilesAcquisitionJobTest {
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_SSH_002.zip", "fake file content 3", UTF_8);
         SFTP_SERVER_RULE.putFile("/cases/20200817T1705Z_1D_RTEFRANCE-FR_TP_002.zip", "fake file content 4", UTF_8);
 
-        CgmesUtils.setNeededSourcingActors(Set.of("RTEFRANCE-FR"));
-        CgmesUtils.setNeededBusinessProcesses(Set.of("1D"));
+        Set<String> authorizedSourcingActors = Set.of("RTEFRANCE-FR");
+        Set<String> authorizedBusinessProcesses = Set.of("1D");
 
         String acquisitionServerUrl = "sftp://localhost:2222";
         try (AcquisitionServer acquisitionServer = new AcquisitionServer(acquisitionServerUrl, "dummy", "dummy")) {
@@ -393,12 +393,12 @@ public class ProfilesAcquisitionJobTest {
             assertEquals(4, retrievedFiles.size());
 
             TransferableFile file1 = acquisitionServer.getFile("20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip", acquisitionServerUrl + "/cases/20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip");
-            assertTrue(CgmesUtils.isValidProfileFileName(file1.getName()));
+            assertTrue(CgmesUtils.isValidProfileFileName(file1.getName(), authorizedSourcingActors, authorizedBusinessProcesses));
             assertEquals("20200817T1705Z_1D_RTEFRANCE-FR_SV_002.zip", file1.getName());
             assertEquals("fake file content 1", new String(file1.getData(), UTF_8));
 
             TransferableFile file2 = acquisitionServer.getFile("20200817T1705Z__RTEFRANCE-FR_EQ_002.zip", acquisitionServerUrl + "/cases/20200817T1705Z__RTEFRANCE-FR_EQ_002.zip");
-            assertTrue(CgmesUtils.isValidProfileFileName(file2.getName()));
+            assertTrue(CgmesUtils.isValidProfileFileName(file2.getName(), authorizedSourcingActors, authorizedBusinessProcesses));
             assertEquals("20200817T1705Z__RTEFRANCE-FR_EQ_002.zip", file2.getName());
             assertEquals("fake file content 2", new String(file2.getData(), UTF_8));
 

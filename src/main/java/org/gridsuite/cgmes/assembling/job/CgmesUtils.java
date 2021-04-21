@@ -29,20 +29,9 @@ public final class CgmesUtils {
     private static final String TP_MODEL_PART = "TP";
     private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList(EQ_MODEL_PART, SSH_MODEL_PART, SV_MODEL_PART, TP_MODEL_PART));
     private static final String DOT_REGEX = "\\.";
-    private static final String UNDERSCORE_REGEX = "\\_";
-
-    private static Set<String> neededSourcingActors;
-    private static Set<String> neededBusinessProcesses;
+    private static final String UNDERSCORE_REGEX = "_";
 
     private CgmesUtils() {
-    }
-
-    public static void setNeededSourcingActors(Set<String> tsos) {
-        neededSourcingActors = tsos;
-    }
-
-    public static void setNeededBusinessProcesses(Set<String> businessProcesses) {
-        neededBusinessProcesses = businessProcesses;
     }
 
   /*The file should have the following structure:
@@ -58,13 +47,14 @@ public final class CgmesUtils {
     <modelPart>: String (EQ, TP, SSH or SV)
     <fileVersion>: three characters long positive integer number between 000 and 999. The most recent version has to be used
      */
-    public static String getValidProfileFileName(String filename) {
+    public static String getValidProfileFileName(String filename, Set<String> authorizedSourcingActors, Set<String> authorizedBusinessProcesses) {
         if (filename.split(DOT_REGEX).length == 2) {
             String base = filename.split(DOT_REGEX)[0];
             String ext = filename.split(DOT_REGEX)[1];
             if (ext.equals("zip") && base.split(UNDERSCORE_REGEX).length == 5) {
                 String[] parts = base.split(UNDERSCORE_REGEX);
-                if (isValidModelPart(parts[3]) && isValidBusinessProcess(parts[1], parts[3]) && isValidSourcingActor(parts[2]) && isValidModelVersion(parts[4])) {
+                if (isValidModelPart(parts[3]) && isValidBusinessProcess(parts[1], parts[3], authorizedBusinessProcesses) &&
+                    isValidSourcingActor(parts[2], authorizedSourcingActors) && isValidModelVersion(parts[4])) {
                     return parts[3];
                 }
             }
@@ -72,8 +62,8 @@ public final class CgmesUtils {
         return null;
     }
 
-    public static boolean isValidProfileFileName(String filename) {
-        return getValidProfileFileName(filename) != null;
+    public static boolean isValidProfileFileName(String filename, Set<String> authorizedSourcingActors, Set<String> authorizedBusinessProcesses) {
+        return getValidProfileFileName(filename, authorizedSourcingActors, authorizedBusinessProcesses) != null;
     }
 
     private static boolean isValidModelVersion(String version) {
@@ -86,12 +76,12 @@ public final class CgmesUtils {
         }
     }
 
-    private static boolean isValidSourcingActor(String sourcingActor) {
-        return neededSourcingActors.contains(sourcingActor);
+    private static boolean isValidSourcingActor(String sourcingActor, Set<String> authorizedSourcingActors) {
+        return authorizedSourcingActors.contains(sourcingActor);
     }
 
-    private static boolean isValidBusinessProcess(String businessProcess, String modelPart) {
-        return businessProcess.isEmpty() ? modelPart.equals(EQ_MODEL_PART) : neededBusinessProcesses.contains(businessProcess);
+    private static boolean isValidBusinessProcess(String businessProcess, String modelPart, Set<String> authorizedBusinessProcesses) {
+        return businessProcess.isEmpty() ? modelPart.equals(EQ_MODEL_PART) : authorizedBusinessProcesses.contains(businessProcess);
     }
 
     private static boolean isValidModelPart(String modelPart) {
@@ -125,9 +115,10 @@ public final class CgmesUtils {
 
     public static TransferableFile prepareFinalZip(String filenameSV, Map<String, String> availableFileDependencies, Set<String> missingDependencies,
                                                    AcquisitionServer acquisitionServer, CgmesBoundaryServiceRequester boundaryServiceRequester,
-                                                   boolean dependenciesStrictMode) throws IOException {
+                                                   boolean dependenciesStrictMode,
+                                                   Set<String> authorizedTsos, Set<String> authorizedBusinessProcesses) throws IOException {
         // test if all needed individual profiles are available
-        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(CgmesUtils::getValidProfileFileName).collect(Collectors.toSet());
+        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(d -> CgmesUtils.getValidProfileFileName(d, authorizedTsos, authorizedBusinessProcesses)).collect(Collectors.toSet());
         if (!availableProfiles.equals(NEEDED_PROFILES)) {
             return null;
         }
