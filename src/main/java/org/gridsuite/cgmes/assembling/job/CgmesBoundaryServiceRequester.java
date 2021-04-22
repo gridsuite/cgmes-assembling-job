@@ -20,7 +20,9 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
@@ -33,6 +35,7 @@ public class CgmesBoundaryServiceRequester {
     private static final String ID_KEY = "id";
     private static final String FILE_NAME_KEY = "filename";
     private static final String BOUNDARY_KEY = "boundary";
+    private static final String MESSAGE_STATUS = "Cgmes boundary server response status: {}";
 
     public CgmesBoundaryServiceRequester(String serviceUrl) {
         this.serviceUrl = serviceUrl;
@@ -47,7 +50,7 @@ public class CgmesBoundaryServiceRequester {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+            LOGGER.info(MESSAGE_STATUS, response.statusCode());
 
             if (response.statusCode() == 200) {
                 String json = response.body();
@@ -71,7 +74,7 @@ public class CgmesBoundaryServiceRequester {
                 .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            LOGGER.info("Cgmes boundary server response status: {}", response.statusCode());
+            LOGGER.info(MESSAGE_STATUS, response.statusCode());
 
             if (response.statusCode() == 200) {
                 String json = response.body();
@@ -91,5 +94,41 @@ public class CgmesBoundaryServiceRequester {
             Thread.currentThread().interrupt();
         }
         return Collections.emptyList();
+    }
+
+    private Set<String> getList(String listName) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(serviceUrl + API_VERSION + "/" + listName))
+                .GET()
+                .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            LOGGER.info(MESSAGE_STATUS, response.statusCode());
+
+            if (response.statusCode() == 200) {
+                String json = response.body();
+                Set<String> result = new HashSet<>();
+                JSONArray array = new JSONArray(json);
+                for (int i = 0; i < array.length(); i++) {
+                    result.add(array.getString(i));
+                }
+                return result;
+            }
+        } catch (IOException e) {
+            LOGGER.error("I/O Error while getting list of {}", listName);
+        } catch (InterruptedException e) {
+            LOGGER.error("Interruption when getting list of {}", listName);
+            Thread.currentThread().interrupt();
+        }
+        return Collections.emptySet();
+    }
+
+    public Set<String> getTsosList() {
+        return getList("tsos");
+    }
+
+    public Set<String> getBusinessProcessesList() {
+        return getList("business-processes");
     }
 }

@@ -22,20 +22,14 @@ import java.util.zip.ZipInputStream;
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
 public final class CgmesUtils {
-
     private static final Logger LOGGER = LoggerFactory.getLogger(CgmesUtils.class);
-
-    // We add sourcingActor "XX" for test purpose
-    private static final Set<String> NEEDED_SOURCING_ACTORS = new TreeSet<>(Arrays.asList("REE", "REN", "RTEFRANCE", "REE-ES", "REN-PT", "RTEFRANCE-FR", "ELIA", "TTN", "XX"));
-
     private static final String SV_MODEL_PART = "SV";
     private static final String EQ_MODEL_PART = "EQ";
     private static final String SSH_MODEL_PART = "SSH";
     private static final String TP_MODEL_PART = "TP";
-
     private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList(EQ_MODEL_PART, SSH_MODEL_PART, SV_MODEL_PART, TP_MODEL_PART));
-
-    private static final Set<String> NEEDED_BUSINESS_PROCESS = new TreeSet<>(Arrays.asList("YR", "MO", "WK", "2D", "1D", "RT"));
+    private static final String DOT_REGEX = "\\.";
+    private static final String UNDERSCORE_REGEX = "_";
 
     private CgmesUtils() {
     }
@@ -48,21 +42,19 @@ public final class CgmesUtils {
     <effectiveDateTime>__<sourcingActor>_EQ_<fileVersion>.zip (two underscores between <effectiveDateTime> and <sourcingActor>)
     where :
     <effectiveDateTime>: UTC datetime (YYYYMMDDTHHmmZ)
-    <businessProcess>: String (YR, MO, WK, 2D, 1D, 23, …, 01 or RT)
-    <sourcingActor>: String (REE, REN, RTEFRANCE, REE-ES, REN-PT or RTEFRANCE-FR)
+    <businessProcess>: String (YR, MO, WK, 2D, 1D, 23, ..., 01, RT, ....)
+    <sourcingActor>: String (REE, REN, RTEFRANCE, ....)
     <modelPart>: String (EQ, TP, SSH or SV)
     <fileVersion>: three characters long positive integer number between 000 and 999. The most recent version has to be used
      */
-    private static final String DOT_REGEX = "\\.";
-    private static final String UNDERSCORE_REGEX = "\\_";
-
-    public static String getValidProfileFileName(String filename) {
+    public static String getValidProfileFileName(String filename, Set<String> authorizedSourcingActors, Set<String> authorizedBusinessProcesses) {
         if (filename.split(DOT_REGEX).length == 2) {
             String base = filename.split(DOT_REGEX)[0];
             String ext = filename.split(DOT_REGEX)[1];
             if (ext.equals("zip") && base.split(UNDERSCORE_REGEX).length == 5) {
                 String[] parts = base.split(UNDERSCORE_REGEX);
-                if (isValidModelPart(parts[3]) && isValidBusinessProcess(parts[1], parts[3]) && isValidSourcingActor(parts[2]) && isValidModelVersion(parts[4])) {
+                if (isValidModelPart(parts[3]) && isValidBusinessProcess(parts[1], parts[3], authorizedBusinessProcesses) &&
+                    isValidSourcingActor(parts[2], authorizedSourcingActors) && isValidModelVersion(parts[4])) {
                     return parts[3];
                 }
             }
@@ -70,8 +62,8 @@ public final class CgmesUtils {
         return null;
     }
 
-    public static boolean isValidProfileFileName(String filename) {
-        return getValidProfileFileName(filename) != null;
+    public static boolean isValidProfileFileName(String filename, Set<String> authorizedSourcingActors, Set<String> authorizedBusinessProcesses) {
+        return getValidProfileFileName(filename, authorizedSourcingActors, authorizedBusinessProcesses) != null;
     }
 
     private static boolean isValidModelVersion(String version) {
@@ -84,26 +76,12 @@ public final class CgmesUtils {
         }
     }
 
-    private static boolean isValidSourcingActor(String sourcingActor) {
-        return NEEDED_SOURCING_ACTORS.contains(sourcingActor);
+    private static boolean isValidSourcingActor(String sourcingActor, Set<String> authorizedSourcingActors) {
+        return authorizedSourcingActors.contains(sourcingActor);
     }
 
-    private static boolean isValidBusinessProcess(String businessProcess, String modelPart) {
-        if (businessProcess.isEmpty()) {
-            return modelPart.equals(EQ_MODEL_PART);
-        } else {
-            if (NEEDED_BUSINESS_PROCESS.contains(businessProcess)) {
-                return true;
-            } else {
-                try {
-                    int v = Integer.parseInt(businessProcess);
-                    return v >= 1 && v <= 23;
-                } catch (NumberFormatException e) {
-                    LOGGER.warn("Invalid business process {}", businessProcess);
-                    return false;
-                }
-            }
-        }
+    private static boolean isValidBusinessProcess(String businessProcess, String modelPart, Set<String> authorizedBusinessProcesses) {
+        return businessProcess.isEmpty() ? modelPart.equals(EQ_MODEL_PART) : authorizedBusinessProcesses.contains(businessProcess);
     }
 
     private static boolean isValidModelPart(String modelPart) {
@@ -137,9 +115,10 @@ public final class CgmesUtils {
 
     public static TransferableFile prepareFinalZip(String filenameSV, Map<String, String> availableFileDependencies, Set<String> missingDependencies,
                                                    AcquisitionServer acquisitionServer, CgmesBoundaryServiceRequester boundaryServiceRequester,
-                                                   boolean dependenciesStrictMode) throws IOException {
+                                                   boolean dependenciesStrictMode,
+                                                   Set<String> authorizedTsos, Set<String> authorizedBusinessProcesses) throws IOException {
         // test if all needed individual profiles are available
-        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(CgmesUtils::getValidProfileFileName).collect(Collectors.toSet());
+        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(d -> CgmesUtils.getValidProfileFileName(d, authorizedTsos, authorizedBusinessProcesses)).collect(Collectors.toSet());
         if (!availableProfiles.equals(NEEDED_PROFILES)) {
             return null;
         }

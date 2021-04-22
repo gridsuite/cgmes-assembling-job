@@ -48,7 +48,6 @@ public final class ProfilesAcquisitionJob {
                                                                          moduleConfigAcquisitionServer.getStringProperty("username"),
                                                                          moduleConfigAcquisitionServer.getStringProperty("password"));
              CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
-
             acquisitionServer.open();
 
             cgmesAssemblingLogger.connectDb(moduleConfigCassandra.getStringProperty("contact-points"), moduleConfigCassandra.getIntProperty("port"));
@@ -56,10 +55,14 @@ public final class ProfilesAcquisitionJob {
             String casesDirectory = moduleConfigAcquisitionServer.getStringProperty("cases-directory");
             String acquisitionServerLabel = moduleConfigAcquisitionServer.getStringProperty("label");
 
+            // Get list of all tsos and business processes from cgmes boundary server
+            Set<String> authorizedTsos = cgmesBoundaryServiceRequester.getTsosList();
+            Set<String> authorizedBusinessProcesses = cgmesBoundaryServiceRequester.getBusinessProcessesList();
+
             // Get valid zip files
             Map<String, String> filesToAcquire = acquisitionServer.listFiles(casesDirectory).entrySet()
                     .stream()
-                    .filter(file -> CgmesUtils.isValidProfileFileName(file.getKey()))
+                    .filter(file -> CgmesUtils.isValidProfileFileName(file.getKey(), authorizedTsos, authorizedBusinessProcesses))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (x, y) -> y, LinkedHashMap::new));
             LOGGER.info("{} valid files found on acquisition server", filesToAcquire.size());
 
@@ -117,7 +120,8 @@ public final class ProfilesAcquisitionJob {
                         missingDependencies, acquisitionServer, cgmesBoundaryServiceRequester,
                         dependenciesStrictMode == null
                             ? moduleConfigAcquisitionServer.getBooleanProperty("dependencies-strict-mode", false)
-                            : dependenciesStrictMode);
+                            : dependenciesStrictMode,
+                        authorizedTsos, authorizedBusinessProcesses);
 
                     if (assembledFile != null) {
                         // Import assembled file in the case server
