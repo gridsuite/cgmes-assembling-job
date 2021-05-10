@@ -6,27 +6,27 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
+import com.datastax.oss.driver.api.core.CqlSession;
+
+import java.net.InetSocketAddress;
 
 /**
  * @author Nicolas Noir <nicolas.noir at rte-france.com>
  */
 public class CassandraConnector {
-    private Cluster cluster;
 
-    private Session session;
+    private CqlSession session;
 
     public void connect(final String node, final int port) {
-        this.cluster = Cluster.builder().addContactPoint(node).withPort(port).build();
-        session = cluster.connect();
+        InetSocketAddress inetAddress = new InetSocketAddress(node, port);
+        this.session = CqlSession.builder().addContactPoint(inetAddress).withLocalDatacenter("datacenter1").build();
     }
 
-    public Session getSession() {
+    public CqlSession getSession() {
         return this.session;
     }
 
     public void close() {
-        cluster.close();
+        session.close();
     }
 }

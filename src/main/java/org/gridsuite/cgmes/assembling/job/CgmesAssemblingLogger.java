@@ -6,16 +6,16 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.ResultSet;
+import com.datastax.oss.driver.api.core.cql.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 import java.util.List;
 
-import static com.datastax.driver.core.querybuilder.QueryBuilder.*;
+import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.*;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
@@ -54,80 +54,96 @@ public class CgmesAssemblingLogger implements AutoCloseable {
         psInsertHandledFile = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(ORIGIN_COLUMN, bindMarker())
-                .value(HANDLED_DATE_COLUMN, bindMarker()));
+                .value(HANDLED_DATE_COLUMN, bindMarker())
+                .build());
 
         psInsertFileNameByUUID = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, FILENAME_BY_UUID_TABLE)
                 .value(UUID_COLUMN, bindMarker())
                 .value(FILENAME_COLUMN, bindMarker())
-                .value(ORIGIN_COLUMN, bindMarker()));
+                .value(ORIGIN_COLUMN, bindMarker())
+                .build());
 
         psInsertUuidByFilename = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, UUID_BY_FILENAME_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(UUID_COLUMN, bindMarker())
-                .value(ORIGIN_COLUMN, bindMarker()));
+                .value(ORIGIN_COLUMN, bindMarker())
+                .build());
 
         psInsertImportedFile = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, IMPORTED_FILES_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(ORIGIN_COLUMN, bindMarker())
-                .value(IMPORT_DATE_COLUMN, bindMarker()));
+                .value(IMPORT_DATE_COLUMN, bindMarker())
+                .build());
 
         psInsertDependencies = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, DEPENDENCIES_TABLE)
                 .value(UUID_COLUMN, bindMarker())
-                .value(DEPENDENCIES_COLUMN, bindMarker()));
+                .value(DEPENDENCIES_COLUMN, bindMarker())
+                .build());
     }
 
     public boolean isHandledFile(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(select(FILENAME_COLUMN,
-                ORIGIN_COLUMN,
-                HANDLED_DATE_COLUMN)
-                .from(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
-                .where(eq(FILENAME_COLUMN, filename)).and(eq(ORIGIN_COLUMN, origin)));
+        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
+                .columns(
+                        FILENAME_COLUMN,
+                        ORIGIN_COLUMN,
+                        HANDLED_DATE_COLUMN)
+                .whereColumn(FILENAME_COLUMN).isEqualTo(literal(filename))
+                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
+                .build());
         Row one = resultSet.one();
         return one != null;
     }
 
     public boolean isImportedFile(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(select(FILENAME_COLUMN,
-                ORIGIN_COLUMN,
-                IMPORT_DATE_COLUMN)
-                .from(KEYSPACE_CGMES_ASSEMBLING, IMPORTED_FILES_TABLE)
-                .where(eq(FILENAME_COLUMN, filename)).and(eq(ORIGIN_COLUMN, origin)));
+        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, IMPORTED_FILES_TABLE)
+                .columns(
+                        FILENAME_COLUMN,
+                        ORIGIN_COLUMN,
+                        IMPORT_DATE_COLUMN)
+                .whereColumn(FILENAME_COLUMN).isEqualTo(literal(filename))
+                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
+                .build());
         Row one = resultSet.one();
         return one != null;
     }
 
     public String getUuidByFileName(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(select(UUID_COLUMN)
-                .from(KEYSPACE_CGMES_ASSEMBLING, UUID_BY_FILENAME_TABLE)
-                .where(eq(FILENAME_COLUMN, filename)).and(eq(ORIGIN_COLUMN, origin)));
+        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, UUID_BY_FILENAME_TABLE)
+                .column(UUID_COLUMN)
+                .whereColumn(FILENAME_COLUMN).isEqualTo(literal(filename))
+                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
+                .build());
         Row one = resultSet.one();
         return one != null ? one.getString(0) : null;
     }
 
     public String getFileNameByUuid(String uuid, String origin) {
-        ResultSet resultSet = connector.getSession().execute(select(FILENAME_COLUMN)
-                .from(KEYSPACE_CGMES_ASSEMBLING, FILENAME_BY_UUID_TABLE)
-                .where(eq(UUID_COLUMN, uuid)).and(eq(ORIGIN_COLUMN, origin)));
+        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, FILENAME_BY_UUID_TABLE)
+                .column(FILENAME_COLUMN)
+                .whereColumn(UUID_COLUMN).isEqualTo(literal(uuid))
+                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
+                .build());
         Row one = resultSet.one();
         return one != null ? one.getString(0) : null;
     }
 
     public List<String> getDependencies(String uuid) {
-        ResultSet resultSet = connector.getSession().execute(select(DEPENDENCIES_COLUMN)
-                .from(KEYSPACE_CGMES_ASSEMBLING, DEPENDENCIES_TABLE)
-                .where(eq(UUID_COLUMN, uuid)));
+        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, DEPENDENCIES_TABLE)
+                .column(DEPENDENCIES_COLUMN)
+                .whereColumn(UUID_COLUMN).isEqualTo(literal(uuid))
+                .build());
         Row one = resultSet.one();
         return one != null ? one.getList(0, String.class) : null;
     }
 
     public void logFileAvailable(String fileName, String uuid, String origin, Date date) {
-        connector.getSession().execute(psInsertHandledFile.bind(fileName, origin, date));
+        connector.getSession().execute(psInsertHandledFile.bind(fileName, origin, date.toInstant()));
         connector.getSession().execute(psInsertFileNameByUUID.bind(uuid, fileName, origin));
         connector.getSession().execute(psInsertUuidByFilename.bind(fileName, uuid, origin));
     }
 
     public void logFileImported(String fileName, String origin, Date date) {
-        connector.getSession().execute(psInsertImportedFile.bind(fileName, origin, date));
+        connector.getSession().execute(psInsertImportedFile.bind(fileName, origin, date.toInstant()));
     }
 
     public void logFileDependencies(String uuid, List<String> dependencies) {
