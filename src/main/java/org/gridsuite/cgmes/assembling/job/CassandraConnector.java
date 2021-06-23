@@ -7,7 +7,6 @@
 package org.gridsuite.cgmes.assembling.job;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-
 import java.net.InetSocketAddress;
 
 /**
@@ -17,9 +16,9 @@ public class CassandraConnector {
 
     private CqlSession session;
 
-    public void connect(final String node, final int port) {
-        InetSocketAddress inetAddress = new InetSocketAddress(node, port);
-        this.session = CqlSession.builder().addContactPoint(inetAddress).withLocalDatacenter("datacenter1").build();
+    public void connect(final String node, final int port, String datacenter) {
+        var inetAddress = new InetSocketAddress(node, port);
+        this.session = CqlSession.builder().addContactPoint(inetAddress).withLocalDatacenter(datacenter).build();
     }
 
     public CqlSession getSession() {

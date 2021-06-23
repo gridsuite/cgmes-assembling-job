@@ -48,8 +48,8 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     private PreparedStatement psInsertUuidByFilename;
     private PreparedStatement psInsertDependencies;
 
-    public void connectDb(String hostname, int port) {
-        connector.connect(hostname, port);
+    public void connectDb(String hostname, int port, String datacenter) {
+        connector.connect(hostname, port, datacenter);
 
         psInsertHandledFile = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
