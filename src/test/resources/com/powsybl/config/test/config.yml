@@ -8,6 +8,7 @@ acquisition-server:
 cassandra:
   contact-points: localhost
   port: 9142
+  datacenter: datacenter1
 
 case-server:
   url: http://localhost:45385/
