@@ -8,6 +8,7 @@ package org.gridsuite.cgmes.assembling.job;
 
 import com.powsybl.commons.compress.ZipPackager;
 import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
+import org.gridsuite.cgmes.assembling.job.util.SecuredZipInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,8 @@ public final class CgmesUtils {
     private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList(EQ_MODEL_PART, SSH_MODEL_PART, SV_MODEL_PART, TP_MODEL_PART));
     private static final String DOT_REGEX = "\\.";
     private static final String UNDERSCORE_REGEX = "_";
+    private static final int MAX_ZIP_ENTRIES_COUNT = 100;
+    private static final int MAX_ZIP_SIZE = 1000000000;
 
     private CgmesUtils() {
     }
@@ -95,7 +98,7 @@ public final class CgmesUtils {
     }
 
     public static ZipInputStream getZipInputStream(byte[] compressedData) throws IOException {
-        ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(compressedData));
+        ZipInputStream zis = new SecuredZipInputStream(new ByteArrayInputStream(compressedData), MAX_ZIP_ENTRIES_COUNT, MAX_ZIP_SIZE);
         zis.getNextEntry();
         return zis;
     }
