@@ -24,17 +24,20 @@ public class SecuredZipInputStreamTest {
     @Test
     public void test() throws IOException {
         byte[] fileContent = ByteStreams.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/MicroGridTestConfiguration_T4_BE_BB_Complete_v2.zip")));
-        SecuredZipInputStream tooManyEntriesSecuredZis = new SecuredZipInputStream(new ByteArrayInputStream(fileContent), 3, 1000000000);
-        assertTrue(assertThrows(IllegalStateException.class, () -> readZip(tooManyEntriesSecuredZis))
+        try (SecuredZipInputStream tooManyEntriesSecuredZis = new SecuredZipInputStream(new ByteArrayInputStream(fileContent), 3, 1000000000)) {
+            assertTrue(assertThrows(IllegalStateException.class, () -> readZip(tooManyEntriesSecuredZis))
                     .getMessage().contains("Zip has too many entries."));
+        }
 
-        SecuredZipInputStream tooBigSecuredZis = new SecuredZipInputStream(new ByteArrayInputStream(fileContent), 1000, 15000);
-        assertTrue(assertThrows(IllegalStateException.class, () -> readZip(tooBigSecuredZis))
-                .getMessage().contains("Zip size is too big."));
+        try (SecuredZipInputStream tooBigSecuredZis = new SecuredZipInputStream(new ByteArrayInputStream(fileContent), 1000, 15000)) {
+            assertTrue(assertThrows(IllegalStateException.class, () -> readZip(tooBigSecuredZis))
+                    .getMessage().contains("Zip size is too big."));
+        }
 
-        SecuredZipInputStream okSecuredZis = new SecuredZipInputStream(new ByteArrayInputStream(fileContent), 1000, 1000000000);
-        ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(fileContent));
-        assertEquals(readZip(zis), readZip(okSecuredZis));
+        try (SecuredZipInputStream okSecuredZis = new SecuredZipInputStream(new ByteArrayInputStream(fileContent), 1000, 1000000000)) {
+            ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(fileContent));
+            assertEquals(readZip(zis), readZip(okSecuredZis));
+        }
     }
 
     public int readZip(ZipInputStream zis) throws IOException {
