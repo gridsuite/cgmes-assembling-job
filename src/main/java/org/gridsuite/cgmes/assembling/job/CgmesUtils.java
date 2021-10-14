@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
@@ -163,7 +164,9 @@ public final class CgmesUtils {
         for (Map.Entry<String, String> availableFile : availableFileDependencies.entrySet()) {
             TransferableFile file = acquisitionServer.getFile(availableFile.getKey(), availableFile.getValue());
             LOGGER.info("assembling available file {} into CGMES {} file", file.getName(), cgmesFileName);
-            emptyZipPackager.addBytes(file.getName().replace(".zip", ".xml"), getZipInputStream(file.getData()).readAllBytes());
+            try (InputStream is = getZipInputStream(file.getData())) {
+                emptyZipPackager.addBytes(file.getName().replace(".zip", ".xml"), is.readAllBytes());
+            }
         }
 
         return new TransferableFile(cgmesFileName, emptyZipPackager.toZipBytes());
