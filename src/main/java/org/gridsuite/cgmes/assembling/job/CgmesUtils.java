@@ -8,11 +8,13 @@ package org.gridsuite.cgmes.assembling.job;
 
 import com.powsybl.commons.compress.ZipPackager;
 import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
+import org.gridsuite.cgmes.assembling.job.util.SecuredZipInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
@@ -30,6 +32,8 @@ public final class CgmesUtils {
     private static final Set<String> NEEDED_PROFILES = new TreeSet<>(Arrays.asList(EQ_MODEL_PART, SSH_MODEL_PART, SV_MODEL_PART, TP_MODEL_PART));
     private static final String DOT_REGEX = "\\.";
     private static final String UNDERSCORE_REGEX = "_";
+    private static final int MAX_ZIP_ENTRIES_COUNT = 100;
+    private static final int MAX_ZIP_SIZE = 1000000000;
 
     private CgmesUtils() {
     }
@@ -95,7 +99,7 @@ public final class CgmesUtils {
     }
 
     public static ZipInputStream getZipInputStream(byte[] compressedData) throws IOException {
-        ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(compressedData));
+        ZipInputStream zis = new SecuredZipInputStream(new ByteArrayInputStream(compressedData), MAX_ZIP_ENTRIES_COUNT, MAX_ZIP_SIZE);
         zis.getNextEntry();
         return zis;
     }
@@ -160,7 +164,9 @@ public final class CgmesUtils {
         for (Map.Entry<String, String> availableFile : availableFileDependencies.entrySet()) {
             TransferableFile file = acquisitionServer.getFile(availableFile.getKey(), availableFile.getValue());
             LOGGER.info("assembling available file {} into CGMES {} file", file.getName(), cgmesFileName);
-            emptyZipPackager.addBytes(file.getName().replace(".zip", ".xml"), getZipInputStream(file.getData()).readAllBytes());
+            try (InputStream is = getZipInputStream(file.getData())) {
+                emptyZipPackager.addBytes(file.getName().replace(".zip", ".xml"), is.readAllBytes());
+            }
         }
 
         return new TransferableFile(cgmesFileName, emptyZipPackager.toZipBytes());
