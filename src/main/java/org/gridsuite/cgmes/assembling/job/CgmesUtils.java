@@ -6,9 +6,9 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
+import com.powsybl.ws.commons.SecuredZipInputStream;
 import com.powsybl.commons.compress.ZipPackager;
 import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
-import org.gridsuite.cgmes.assembling.job.util.SecuredZipInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
