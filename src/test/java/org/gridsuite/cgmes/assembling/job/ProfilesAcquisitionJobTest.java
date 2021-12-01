@@ -41,7 +41,9 @@ public class ProfilesAcquisitionJobTest {
 
     @ClassRule
     public static final CassandraRule CASSANDRA_RULE = new CassandraRule().withCassandraFactory(EmbeddedCassandraFactoryConfig.embeddedCassandraFactory())
-                                                                          .withCqlDataSet(CqlDataSet.ofClasspaths("create_keyspace.cql", "cgmes_assembling.cql"));
+                                                                          .withCqlDataSet(CqlDataSet.ofClasspaths("create_keyspace.cql")
+                                                                          .add(CqlDataSet.ofStrings("USE cgmes_assembling;"))
+                                                                          .add(CqlDataSet.ofClasspaths("cgmes_assembling.cql")));
 
     @ClassRule
     public static final FakeSftpServerRule SFTP_SERVER_RULE = new FakeSftpServerRule().addUser("dummy", "dummy").setPort(2222);
