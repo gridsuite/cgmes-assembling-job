@@ -27,8 +27,6 @@ public class CgmesAssemblingLogger implements AutoCloseable {
 
     private final CassandraConnector connector = new CassandraConnector();
 
-    private static final String KEYSPACE_CGMES_ASSEMBLING = "cgmes_assembling";
-
     private static final String HANDLED_FILES_TABLE = "handled_files";
     private static final String IMPORTED_FILES_TABLE = "imported_files";
     private static final String FILENAME_BY_UUID_TABLE = "filename_by_uuid";
@@ -47,42 +45,49 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     private PreparedStatement psInsertFileNameByUUID;
     private PreparedStatement psInsertUuidByFilename;
     private PreparedStatement psInsertDependencies;
+    private String keyspaceName;
 
-    public void connectDb(String hostname, int port, String datacenter) {
+    private void setKeyspaceName(String keyspaceName) {
+        this.keyspaceName = keyspaceName;
+    }
+
+    public void connectDb(String hostname, int port, String datacenter, String keyspaceName) {
         connector.connect(hostname, port, datacenter);
 
-        psInsertHandledFile = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
+        setKeyspaceName(keyspaceName);
+
+        psInsertHandledFile = connector.getSession().prepare(insertInto(this.keyspaceName, HANDLED_FILES_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(ORIGIN_COLUMN, bindMarker())
                 .value(HANDLED_DATE_COLUMN, bindMarker())
                 .build());
 
-        psInsertFileNameByUUID = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, FILENAME_BY_UUID_TABLE)
+        psInsertFileNameByUUID = connector.getSession().prepare(insertInto(this.keyspaceName, FILENAME_BY_UUID_TABLE)
                 .value(UUID_COLUMN, bindMarker())
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(ORIGIN_COLUMN, bindMarker())
                 .build());
 
-        psInsertUuidByFilename = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, UUID_BY_FILENAME_TABLE)
+        psInsertUuidByFilename = connector.getSession().prepare(insertInto(this.keyspaceName, UUID_BY_FILENAME_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(UUID_COLUMN, bindMarker())
                 .value(ORIGIN_COLUMN, bindMarker())
                 .build());
 
-        psInsertImportedFile = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, IMPORTED_FILES_TABLE)
+        psInsertImportedFile = connector.getSession().prepare(insertInto(this.keyspaceName, IMPORTED_FILES_TABLE)
                 .value(FILENAME_COLUMN, bindMarker())
                 .value(ORIGIN_COLUMN, bindMarker())
                 .value(IMPORT_DATE_COLUMN, bindMarker())
                 .build());
 
-        psInsertDependencies = connector.getSession().prepare(insertInto(KEYSPACE_CGMES_ASSEMBLING, DEPENDENCIES_TABLE)
+        psInsertDependencies = connector.getSession().prepare(insertInto(this.keyspaceName, DEPENDENCIES_TABLE)
                 .value(UUID_COLUMN, bindMarker())
                 .value(DEPENDENCIES_COLUMN, bindMarker())
                 .build());
     }
 
     public boolean isHandledFile(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, HANDLED_FILES_TABLE)
+        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, HANDLED_FILES_TABLE)
                 .columns(
                         FILENAME_COLUMN,
                         ORIGIN_COLUMN,
@@ -95,7 +100,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public boolean isImportedFile(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, IMPORTED_FILES_TABLE)
+        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, IMPORTED_FILES_TABLE)
                 .columns(
                         FILENAME_COLUMN,
                         ORIGIN_COLUMN,
@@ -108,7 +113,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public String getUuidByFileName(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, UUID_BY_FILENAME_TABLE)
+        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, UUID_BY_FILENAME_TABLE)
                 .column(UUID_COLUMN)
                 .whereColumn(FILENAME_COLUMN).isEqualTo(literal(filename))
                 .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
@@ -118,7 +123,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public String getFileNameByUuid(String uuid, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, FILENAME_BY_UUID_TABLE)
+        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, FILENAME_BY_UUID_TABLE)
                 .column(FILENAME_COLUMN)
                 .whereColumn(UUID_COLUMN).isEqualTo(literal(uuid))
                 .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
@@ -128,7 +133,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public List<String> getDependencies(String uuid) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(KEYSPACE_CGMES_ASSEMBLING, DEPENDENCIES_TABLE)
+        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, DEPENDENCIES_TABLE)
                 .column(DEPENDENCIES_COLUMN)
                 .whereColumn(UUID_COLUMN).isEqualTo(literal(uuid))
                 .build());

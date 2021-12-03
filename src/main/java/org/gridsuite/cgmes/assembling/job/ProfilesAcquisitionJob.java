@@ -50,7 +50,8 @@ public final class ProfilesAcquisitionJob {
              CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
             acquisitionServer.open();
 
-            cgmesAssemblingLogger.connectDb(moduleConfigCassandra.getStringProperty("contact-points"), moduleConfigCassandra.getIntProperty("port"), moduleConfigCassandra.getStringProperty("datacenter"));
+            String cgmesAssemblingKeyspaceName = moduleConfigCassandra.getStringProperty("keyspace-name", "cgmes_assembling");
+            cgmesAssemblingLogger.connectDb(moduleConfigCassandra.getStringProperty("contact-points"), moduleConfigCassandra.getIntProperty("port"), moduleConfigCassandra.getStringProperty("datacenter"), cgmesAssemblingKeyspaceName);
 
             String casesDirectory = moduleConfigAcquisitionServer.getStringProperty("cases-directory");
             String acquisitionServerLabel = moduleConfigAcquisitionServer.getStringProperty("label");
