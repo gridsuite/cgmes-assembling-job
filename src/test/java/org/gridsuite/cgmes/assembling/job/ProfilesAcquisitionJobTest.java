@@ -66,7 +66,7 @@ public class ProfilesAcquisitionJobTest {
     @Test
     public void historyLoggerTest() {
         try (CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
-            cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1");
+            cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
             assertFalse(cgmesAssemblingLogger.isHandledFile("testFile.iidm", "my_sftp_server"));
             cgmesAssemblingLogger.logFileAvailable("testFile.iidm", "uuid", "my_sftp_server", new Date());
             assertEquals("testFile.iidm", cgmesAssemblingLogger.getFileNameByUuid("uuid", "my_sftp_server"));
@@ -199,7 +199,7 @@ public class ProfilesAcquisitionJobTest {
         }
 
         CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger();
-        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1");
+        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
 
         String[] args = null;
 
@@ -301,7 +301,7 @@ public class ProfilesAcquisitionJobTest {
         }
 
         CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger();
-        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1");
+        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
 
         String[] args = null;
 
@@ -363,7 +363,7 @@ public class ProfilesAcquisitionJobTest {
         }
 
         CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger();
-        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1");
+        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
 
         String[] args = null;
 
