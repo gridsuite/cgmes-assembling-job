@@ -1,5 +1,0 @@
-TRUNCATE cgmes_assembling.handled_files;
-TRUNCATE cgmes_assembling.imported_files;
-TRUNCATE cgmes_assembling.filename_by_uuid;
-TRUNCATE cgmes_assembling.uuid_by_filename;
-TRUNCATE cgmes_assembling.dependencies;
