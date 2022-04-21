@@ -37,9 +37,9 @@ public final class ProfilesAcquisitionJob {
         PlatformConfig platformConfig = PlatformConfig.defaultConfig();
 
         ModuleConfig moduleConfigAcquisitionServer = platformConfig.getModuleConfig("acquisition-server");
-        ModuleConfig moduleConfigCassandra = platformConfig.getModuleConfig("cassandra");
         ModuleConfig moduleConfigCaseServer = platformConfig.getModuleConfig("case-server");
         ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getModuleConfig("cgmes-boundary-server");
+        ModuleConfig moduleConfigDatabase = platformConfig.getModuleConfig("database");
 
         final CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester(moduleConfigCaseServer.getStringProperty("url"));
         final CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester(moduleConfigCgmesBoundaryServer.getStringProperty("url"));
@@ -50,8 +50,9 @@ public final class ProfilesAcquisitionJob {
              CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
             acquisitionServer.open();
 
-            String cgmesAssemblingKeyspaceName = moduleConfigCassandra.getStringProperty("keyspace-name", "cgmes_assembling");
-            cgmesAssemblingLogger.connectDb(moduleConfigCassandra.getStringProperty("contact-points"), moduleConfigCassandra.getIntProperty("port"), moduleConfigCassandra.getStringProperty("datacenter"), cgmesAssemblingKeyspaceName);
+            cgmesAssemblingLogger.connectDb(moduleConfigDatabase.getStringProperty("url"),
+                                            moduleConfigDatabase.getStringProperty("username"),
+                                            moduleConfigDatabase.getStringProperty("password"));
 
             String casesDirectory = moduleConfigAcquisitionServer.getStringProperty("cases-directory");
             String acquisitionServerLabel = moduleConfigAcquisitionServer.getStringProperty("label");
@@ -157,7 +158,7 @@ public final class ProfilesAcquisitionJob {
             LOGGER.error("Interruption during assembling");
             Thread.currentThread().interrupt();
         } catch (Exception exc) {
-            LOGGER.error("Job execution error: {}", exc.getMessage());
+            LOGGER.error("Job execution error: {}", exc);
         }
     }
 }

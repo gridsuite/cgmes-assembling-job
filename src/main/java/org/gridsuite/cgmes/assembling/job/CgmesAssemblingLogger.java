@@ -6,16 +6,23 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import com.datastax.oss.driver.api.core.cql.ResultSet;
-import com.datastax.oss.driver.api.core.cql.Row;
+import liquibase.Contexts;
+import liquibase.LabelExpression;
+import liquibase.Liquibase;
+import liquibase.database.Database;
+import liquibase.database.DatabaseFactory;
+import liquibase.database.jvm.JdbcConnection;
+import liquibase.exception.DatabaseException;
+import liquibase.resource.ClassLoaderResourceAccessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Date;
-import java.util.List;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.*;
 
-import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.*;
+import static org.gridsuite.cgmes.assembling.job.JdbcQueries.*;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
@@ -25,138 +32,149 @@ public class CgmesAssemblingLogger implements AutoCloseable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CgmesAssemblingLogger.class);
 
-    private final CassandraConnector connector = new CassandraConnector();
+    public static final String FILENAME_COLUMN = "FILENAME";
+    public static final String UUID_COLUMN = "UUID";
+    public static final String DEPENDENCIES_COLUMN = "dependency_uuid";
 
-    private static final String HANDLED_FILES_TABLE = "handled_files";
-    private static final String IMPORTED_FILES_TABLE = "imported_files";
-    private static final String FILENAME_BY_UUID_TABLE = "filename_by_uuid";
-    private static final String UUID_BY_FILENAME_TABLE = "uuid_by_filename";
-    private static final String DEPENDENCIES_TABLE = "dependencies";
+    private JdbcConnector connector;
 
-    private static final String FILENAME_COLUMN = "filename";
-    private static final String ORIGIN_COLUMN = "origin";
-    private static final String IMPORT_DATE_COLUMN = "import_date";
-    private static final String HANDLED_DATE_COLUMN = "handled_date";
-    private static final String UUID_COLUMN = "uuid";
-    private static final String DEPENDENCIES_COLUMN = "dependencies";
+    public static final String DB_CHANGELOG_MASTER = "db/changelog/db.changelog-master.yaml";
 
-    private PreparedStatement psInsertHandledFile;
-    private PreparedStatement psInsertImportedFile;
-    private PreparedStatement psInsertFileNameByUUID;
-    private PreparedStatement psInsertUuidByFilename;
-    private PreparedStatement psInsertDependencies;
-    private String keyspaceName;
+    public void connectDb(String url, String username, String password) {
+        connector = new JdbcConnector(url, username, password);
+        try {
+            // liquibase creates the connection and closes it
+            // (normal because it could use a separate user, or set special flags on the connection)
+            updateLiquibase(connector);
+        } catch (DatabaseException e) {
+            throw new RuntimeException(e);
+        }
 
-    private void setKeyspaceName(String keyspaceName) {
-        this.keyspaceName = keyspaceName;
+        // Create another connection for regular operations
+        connector.connect();
     }
 
-    public void connectDb(String hostname, int port, String datacenter, String keyspaceName) {
-        connector.connect(hostname, port, datacenter);
-
-        setKeyspaceName(keyspaceName);
-
-        psInsertHandledFile = connector.getSession().prepare(insertInto(this.keyspaceName, HANDLED_FILES_TABLE)
-                .value(FILENAME_COLUMN, bindMarker())
-                .value(ORIGIN_COLUMN, bindMarker())
-                .value(HANDLED_DATE_COLUMN, bindMarker())
-                .build());
-
-        psInsertFileNameByUUID = connector.getSession().prepare(insertInto(this.keyspaceName, FILENAME_BY_UUID_TABLE)
-                .value(UUID_COLUMN, bindMarker())
-                .value(FILENAME_COLUMN, bindMarker())
-                .value(ORIGIN_COLUMN, bindMarker())
-                .build());
-
-        psInsertUuidByFilename = connector.getSession().prepare(insertInto(this.keyspaceName, UUID_BY_FILENAME_TABLE)
-                .value(FILENAME_COLUMN, bindMarker())
-                .value(UUID_COLUMN, bindMarker())
-                .value(ORIGIN_COLUMN, bindMarker())
-                .build());
-
-        psInsertImportedFile = connector.getSession().prepare(insertInto(this.keyspaceName, IMPORTED_FILES_TABLE)
-                .value(FILENAME_COLUMN, bindMarker())
-                .value(ORIGIN_COLUMN, bindMarker())
-                .value(IMPORT_DATE_COLUMN, bindMarker())
-                .build());
-
-        psInsertDependencies = connector.getSession().prepare(insertInto(this.keyspaceName, DEPENDENCIES_TABLE)
-                .value(UUID_COLUMN, bindMarker())
-                .value(DEPENDENCIES_COLUMN, bindMarker())
-                .build());
+    private void updateLiquibase(JdbcConnector connector) throws DatabaseException {
+        Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connector.connect()));
+        Properties properties = new Properties();
+        try (Liquibase liquibase = new Liquibase(DB_CHANGELOG_MASTER,
+                new ClassLoaderResourceAccessor(),
+                database);) {
+            properties.forEach((key, value) -> liquibase.setChangeLogParameter(Objects.toString(key), value));
+            liquibase.update(new Contexts(), new LabelExpression());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean isHandledFile(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, HANDLED_FILES_TABLE)
-                .columns(
-                        FILENAME_COLUMN,
-                        ORIGIN_COLUMN,
-                        HANDLED_DATE_COLUMN)
-                .whereColumn(FILENAME_COLUMN).isEqualTo(literal(filename))
-                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
-                .build());
-        Row one = resultSet.one();
-        return one != null;
+        return checkValue(SELECT_HANDLED_FILE, filename, origin);
     }
 
     public boolean isImportedFile(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, IMPORTED_FILES_TABLE)
-                .columns(
-                        FILENAME_COLUMN,
-                        ORIGIN_COLUMN,
-                        IMPORT_DATE_COLUMN)
-                .whereColumn(FILENAME_COLUMN).isEqualTo(literal(filename))
-                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
-                .build());
-        Row one = resultSet.one();
-        return one != null;
-    }
-
-    public String getUuidByFileName(String filename, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, UUID_BY_FILENAME_TABLE)
-                .column(UUID_COLUMN)
-                .whereColumn(FILENAME_COLUMN).isEqualTo(literal(filename))
-                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
-                .build());
-        Row one = resultSet.one();
-        return one != null ? one.getString(0) : null;
-    }
-
-    public String getFileNameByUuid(String uuid, String origin) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, FILENAME_BY_UUID_TABLE)
-                .column(FILENAME_COLUMN)
-                .whereColumn(UUID_COLUMN).isEqualTo(literal(uuid))
-                .whereColumn(ORIGIN_COLUMN).isEqualTo(literal(origin))
-                .build());
-        Row one = resultSet.one();
-        return one != null ? one.getString(0) : null;
+        return checkValue(SELECT_IMPORTED_FILE, filename, origin);
     }
 
     public List<String> getDependencies(String uuid) {
-        ResultSet resultSet = connector.getSession().execute(selectFrom(this.keyspaceName, DEPENDENCIES_TABLE)
-                .column(DEPENDENCIES_COLUMN)
-                .whereColumn(UUID_COLUMN).isEqualTo(literal(uuid))
-                .build());
-        Row one = resultSet.one();
-        return one != null ? one.getList(0, String.class) : null;
+        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(SELECT_DEPENDENCIES)) {
+            preparedStatement.setString(1, uuid);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            List<String> result = new ArrayList<>();
+
+            while (resultSet.next()) {
+                result.add(resultSet.getString(DEPENDENCIES_COLUMN));
+            }
+
+            return result;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void logFileAvailable(String fileName, String uuid, String origin, Date date) {
-        connector.getSession().execute(psInsertHandledFile.bind(fileName, origin, date.toInstant()));
-        connector.getSession().execute(psInsertFileNameByUUID.bind(uuid, fileName, origin));
-        connector.getSession().execute(psInsertUuidByFilename.bind(fileName, uuid, origin));
+        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(INSERT_HANDLED_FILE)) {
+            preparedStatement.setString(1, fileName);
+            preparedStatement.setString(2, origin);
+            preparedStatement.setDate(3, new java.sql.Date(date.getTime()));
+            preparedStatement.setString(4, uuid);
+            preparedStatement.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void logFileImported(String fileName, String origin, Date date) {
-        connector.getSession().execute(psInsertImportedFile.bind(fileName, origin, date.toInstant()));
+        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(INSERT_IMPORTED_FILE)) {
+            preparedStatement.setString(1, fileName);
+            preparedStatement.setString(2, origin);
+            preparedStatement.setDate(3, new java.sql.Date(date.getTime()));
+            preparedStatement.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void logFileDependencies(String uuid, List<String> dependencies) {
-        connector.getSession().execute(psInsertDependencies.bind(uuid, dependencies));
-        LOGGER.info("Add dependancy between file {} and files {}", uuid, dependencies);
+        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(INSERT_DEPENDENCIES)) {
+            for (String dependency : dependencies) {
+                if (dependency != null) {
+                    preparedStatement.setString(1, uuid);
+                    preparedStatement.setString(2, dependency);
+                    preparedStatement.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        LOGGER.info("Add dependency between file {} and files {}", uuid, dependencies);
+    }
+
+    public String getFileNameByUuid(String uuid, String origin) {
+        return getValue(uuid, origin, SELECT_FILENAME_BY_UUID, FILENAME_COLUMN);
+    }
+
+    public String getUuidByFileName(String filename, String origin) {
+        return getValue(filename, origin, SELECT_UUID_BY_FILENAME, UUID_COLUMN);
+    }
+
+    private String getValue(String file, String origin, String query, String columnName) {
+        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(query)) {
+            preparedStatement.setString(1, file);
+            preparedStatement.setString(2, origin);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            String result = null;
+            if (resultSet.next()) {
+                result = resultSet.getString(columnName);
+            }
+            return result;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private boolean checkValue(String query, String filename, String origin) {
+        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(query)) {
+            preparedStatement.setString(1, filename);
+            preparedStatement.setString(2, origin);
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            return resultSet.next();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void close() {
-        connector.close();
+        if (connector != null) {
+            connector.close();
+        }
+    }
+
+    public JdbcConnector getConnector() {
+        return connector;
     }
 }

@@ -6,12 +6,6 @@ acquisition-server:
   label: my_sftp_server
   dependencies-strict-mode: false
 
-cassandra:
-  contact-points: localhost
-  port: 9042
-  datacenter: datacenter1
-  keyspace-name: cgmes_assembling
-
 case-server:
   url: http://127.0.0.1/
 

@@ -6,9 +6,9 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import com.github.nosan.embedded.cassandra.api.cql.CqlDataSet;
-import com.github.nosan.embedded.cassandra.junit4.test.CassandraRule;
 import com.github.stefanbirkner.fakesftpserver.rule.FakeSftpServerRule;
+import com.powsybl.commons.config.ModuleConfig;
+import com.powsybl.commons.config.PlatformConfig;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
@@ -26,7 +26,9 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.sql.*;
 import java.util.*;
+import java.util.Date;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
@@ -39,11 +41,10 @@ import static org.mockserver.model.HttpResponse.response;
  */
 public class ProfilesAcquisitionJobTest {
 
-    @ClassRule
-    public static final CassandraRule CASSANDRA_RULE = new CassandraRule().withCassandraFactory(EmbeddedCassandraFactoryConfig.embeddedCassandraFactory())
-                                                                          .withCqlDataSet(CqlDataSet.ofClasspaths("create_keyspace.cql")
-                                                                          .add(CqlDataSet.ofStrings("USE cgmes_assembling;"))
-                                                                          .add(CqlDataSet.ofClasspaths("cgmes_assembling.cql")));
+    private String url;
+    private String username;
+    private String password;
+    CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger();
 
     @ClassRule
     public static final FakeSftpServerRule SFTP_SERVER_RULE = new FakeSftpServerRule().addUser("dummy", "dummy").setPort(2222);
@@ -52,30 +53,34 @@ public class ProfilesAcquisitionJobTest {
     public final MockServerRule mockServer = new MockServerRule(this, 45385, 55487);
 
     @Before
-    public void setUp() throws IOException {
-        CqlDataSet.ofClasspaths("truncate.cql").forEachStatement(CASSANDRA_RULE.getCassandraConnection()::execute);
+    public void setUp() throws IOException, InterruptedException {
         SFTP_SERVER_RULE.deleteAllFilesAndDirectories();
+
+        PlatformConfig platformConfig = PlatformConfig.defaultConfig();
+        ModuleConfig config = platformConfig.getModuleConfig("database");
+        url = config.getStringProperty("url");
+        username = config.getStringProperty("username");
+        password = config.getStringProperty("password");
+        cgmesAssemblingLogger.connectDb(url, username, password);
+
+        truncate();
     }
 
     @After
     public void tearDown() throws IOException {
-        CqlDataSet.ofClasspaths("truncate.cql").forEachStatement(CASSANDRA_RULE.getCassandraConnection()::execute);
         SFTP_SERVER_RULE.deleteAllFilesAndDirectories();
     }
 
     @Test
     public void historyLoggerTest() {
-        try (CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
-            cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
-            assertFalse(cgmesAssemblingLogger.isHandledFile("testFile.iidm", "my_sftp_server"));
-            cgmesAssemblingLogger.logFileAvailable("testFile.iidm", "uuid", "my_sftp_server", new Date());
-            assertEquals("testFile.iidm", cgmesAssemblingLogger.getFileNameByUuid("uuid", "my_sftp_server"));
-            assertEquals("uuid", cgmesAssemblingLogger.getUuidByFileName("testFile.iidm", "my_sftp_server"));
-            assertTrue(cgmesAssemblingLogger.isHandledFile("testFile.iidm", "my_sftp_server"));
+        assertFalse(cgmesAssemblingLogger.isHandledFile("testFile.iidm", "my_sftp_server"));
+        cgmesAssemblingLogger.logFileAvailable("testFile.iidm", "uuid", "my_sftp_server", new Date());
+        assertEquals("testFile.iidm", cgmesAssemblingLogger.getFileNameByUuid("uuid", "my_sftp_server"));
+        assertEquals("uuid", cgmesAssemblingLogger.getUuidByFileName("testFile.iidm", "my_sftp_server"));
+        assertTrue(cgmesAssemblingLogger.isHandledFile("testFile.iidm", "my_sftp_server"));
 
-            cgmesAssemblingLogger.logFileDependencies("uuid", Arrays.asList("uuid1", "uuid2"));
-            assertEquals(2, cgmesAssemblingLogger.getDependencies("uuid").size(), 2);
-        }
+        cgmesAssemblingLogger.logFileDependencies("uuid", Arrays.asList("uuid1", "uuid2"));
+        assertEquals(2, cgmesAssemblingLogger.getDependencies("uuid").size(), 2);
     }
 
     @Test
@@ -159,6 +164,32 @@ public class ProfilesAcquisitionJobTest {
         assertTrue(cgmesBoundaryServiceRequester.getLastBoundaries().isEmpty());
     }
 
+    @Test
+    public void testGetValidProfileFileName() {
+        Set<String> authorizedSourcingActors = new HashSet<>();
+        Set<String> authorizedBusinessProcesses = new HashSet<>();
+
+        authorizedBusinessProcesses.add("1D");
+        authorizedSourcingActors.add("XX");
+
+        assertEquals("SSH", CgmesUtils.getValidProfileFileName("20191106T0930Z_1D_XX_SSH_001.zip", authorizedSourcingActors, authorizedBusinessProcesses));
+        assertNull(CgmesUtils.getValidProfileFileName("20191106T0930Z_1D_XX_SSH_1002.zip", authorizedSourcingActors, authorizedBusinessProcesses));
+        assertNull(CgmesUtils.getValidProfileFileName("20191106T0930Z_1D_YY_SSH_001.zip", authorizedSourcingActors, authorizedBusinessProcesses));
+        assertNull(CgmesUtils.getValidProfileFileName("20191106T0930Z_6D_XX_SSH_001.zip", authorizedSourcingActors, authorizedBusinessProcesses));
+        assertNull(CgmesUtils.getValidProfileFileName("20191106T0930Z_1D_XX_SSH_001.xml", authorizedSourcingActors, authorizedBusinessProcesses));
+        assertNull(CgmesUtils.getValidProfileFileName("20191106T0930Z_1D_XX_SSH_abc.zip", authorizedSourcingActors, authorizedBusinessProcesses));
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testConnectDB() {
+        cgmesAssemblingLogger.connectDb(null, username, password);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testLogDependencies() {
+        cgmesAssemblingLogger.logFileDependencies("uuid", null);
+    }
+
     private void expectRequestBoundary(String path, String response, Integer status) {
         mockServer.getClient().when(request().withMethod("GET").withPath(path),
                 Times.exactly(1))
@@ -197,9 +228,6 @@ public class ProfilesAcquisitionJobTest {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SSH_001.zip", bisSSH.readAllBytes());
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SV_001.zip", bisSV.readAllBytes());
         }
-
-        CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger();
-        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
 
         String[] args = null;
 
@@ -300,9 +328,6 @@ public class ProfilesAcquisitionJobTest {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z__XX_EQ_001.zip", bisEQ.readAllBytes());
         }
 
-        CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger();
-        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
-
         String[] args = null;
 
         String lastBoundary1Content = StringEscapeUtils.escapeJava(IOUtils.toString(getClass().getResourceAsStream("/last_eqbd.xml"), Charset.defaultCharset()));
@@ -362,9 +387,6 @@ public class ProfilesAcquisitionJobTest {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SSH_001.zip", bisSSH.readAllBytes());
         }
 
-        CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger();
-        cgmesAssemblingLogger.connectDb("localhost", 9142, "datacenter1", "cgmes_assembling");
-
         String[] args = null;
 
         expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
@@ -406,6 +428,20 @@ public class ProfilesAcquisitionJobTest {
 
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void truncate() {
+        List<String> tables = List.of("handled_files", "imported_files", "handled_files_dependencies");
+        tables.forEach(table -> truncate(table));
+    }
+
+    private void truncate(String table) {
+        JdbcConnector connector = cgmesAssemblingLogger.getConnector();
+        try (PreparedStatement truncateStatement = connector.getConnection().prepareStatement("TRUNCATE TABLE  " + table)) {
+            truncateStatement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
     }
 }
