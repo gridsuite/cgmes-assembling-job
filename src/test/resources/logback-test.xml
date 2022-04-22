@@ -15,9 +15,4 @@
     <logger name="com.datastax.driver.core" level="warn"/>
     <logger name="org.apache.commons.vfs2.provider" level="warn"/>
 
-    <!--
-        suppress forked cassandra stdout output
-    -->
-    <logger name="com.github.nosan.embedded.cassandra.api.Cassandra" level="warn"/>
-
 </configuration>

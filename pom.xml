@@ -223,11 +223,6 @@
 
         <!-- Test dependencies -->
         <dependency>
-            <groupId>com.github.nosan</groupId>
-            <artifactId>embedded-cassandra-junit4-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>com.github.stefanbirkner</groupId>
             <artifactId>fake-sftp-server-rule</artifactId>
             <scope>test</scope>
