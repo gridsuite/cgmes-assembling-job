@@ -11,7 +11,11 @@ import com.powsybl.commons.config.ModuleConfig;
 import com.powsybl.commons.config.PlatformConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import javax.sql.DataSource;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.*;
@@ -22,24 +26,35 @@ import java.util.zip.ZipInputStream;
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
-public final class ProfilesAcquisitionJob {
+
+@SuppressWarnings({"checkstyle:HideUtilityClassConstructor"})
+@SpringBootApplication
+public class ProfilesAcquisitionJob implements CommandLineRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfilesAcquisitionJob.class);
 
-    private ProfilesAcquisitionJob() {
+    private DataSource dataSource;
+
+    public ProfilesAcquisitionJob(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     public static void main(String... args) {
+        SpringApplication.run(ProfilesAcquisitionJob.class, args);
+    }
+
+    @Override
+    public void run(String... args) {
         handle(null);
     }
 
-    public static void handle(Boolean dependenciesStrictMode) {
+    public void handle(Boolean dependenciesStrictMode) {
+
         PlatformConfig platformConfig = PlatformConfig.defaultConfig();
 
         ModuleConfig moduleConfigAcquisitionServer = platformConfig.getModuleConfig("acquisition-server");
         ModuleConfig moduleConfigCaseServer = platformConfig.getModuleConfig("case-server");
         ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getModuleConfig("cgmes-boundary-server");
-        ModuleConfig moduleConfigDatabase = platformConfig.getModuleConfig("database");
 
         final CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester(moduleConfigCaseServer.getStringProperty("url"));
         final CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester(moduleConfigCgmesBoundaryServer.getStringProperty("url"));
@@ -47,12 +62,8 @@ public final class ProfilesAcquisitionJob {
         try (AcquisitionServer acquisitionServer = new AcquisitionServer(moduleConfigAcquisitionServer.getStringProperty("url"),
                                                                          moduleConfigAcquisitionServer.getStringProperty("username"),
                                                                          moduleConfigAcquisitionServer.getStringProperty("password"));
-             CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger()) {
+             CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger(dataSource)) {
             acquisitionServer.open();
-
-            cgmesAssemblingLogger.connectDb(moduleConfigDatabase.getStringProperty("url"),
-                                            moduleConfigDatabase.getStringProperty("username"),
-                                            moduleConfigDatabase.getStringProperty("password"));
 
             String casesDirectory = moduleConfigAcquisitionServer.getStringProperty("cases-directory");
             String acquisitionServerLabel = moduleConfigAcquisitionServer.getStringProperty("label");

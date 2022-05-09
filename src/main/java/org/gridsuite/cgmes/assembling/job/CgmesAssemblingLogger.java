@@ -6,17 +6,11 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import liquibase.Contexts;
-import liquibase.LabelExpression;
-import liquibase.Liquibase;
-import liquibase.database.Database;
-import liquibase.database.DatabaseFactory;
-import liquibase.database.jvm.JdbcConnection;
-import liquibase.exception.DatabaseException;
-import liquibase.resource.ClassLoaderResourceAccessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -36,33 +30,12 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     public static final String UUID_COLUMN = "UUID";
     public static final String DEPENDENCIES_COLUMN = "dependency_uuid";
 
-    private JdbcConnector connector;
+    private Connection connection;
 
-    public static final String DB_CHANGELOG_MASTER = "db/changelog/db.changelog-master.yaml";
-
-    public void connectDb(String url, String username, String password) {
-        connector = new JdbcConnector(url, username, password);
+    public CgmesAssemblingLogger(DataSource dataSource) {
         try {
-            // liquibase creates the connection and closes it
-            // (normal because it could use a separate user, or set special flags on the connection)
-            updateLiquibase(connector);
-        } catch (DatabaseException e) {
-            throw new RuntimeException(e);
-        }
-
-        // Create another connection for regular operations
-        connector.connect();
-    }
-
-    private void updateLiquibase(JdbcConnector connector) throws DatabaseException {
-        Database database = DatabaseFactory.getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connector.connect()));
-        Properties properties = new Properties();
-        try (Liquibase liquibase = new Liquibase(DB_CHANGELOG_MASTER,
-                new ClassLoaderResourceAccessor(),
-                database);) {
-            properties.forEach((key, value) -> liquibase.setChangeLogParameter(Objects.toString(key), value));
-            liquibase.update(new Contexts(), new LabelExpression());
-        } catch (Exception e) {
+            this.connection = dataSource.getConnection();
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
@@ -76,7 +49,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public List<String> getDependencies(String uuid) {
-        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(SELECT_DEPENDENCIES)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(SELECT_DEPENDENCIES)) {
             preparedStatement.setString(1, uuid);
             ResultSet resultSet = preparedStatement.executeQuery();
 
@@ -93,7 +66,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public void logFileAvailable(String fileName, String uuid, String origin, Date date) {
-        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(INSERT_HANDLED_FILE)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(INSERT_HANDLED_FILE)) {
             preparedStatement.setString(1, fileName);
             preparedStatement.setString(2, origin);
             preparedStatement.setDate(3, new java.sql.Date(date.getTime()));
@@ -106,7 +79,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public void logFileImported(String fileName, String origin, Date date) {
-        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(INSERT_IMPORTED_FILE)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(INSERT_IMPORTED_FILE)) {
             preparedStatement.setString(1, fileName);
             preparedStatement.setString(2, origin);
             preparedStatement.setDate(3, new java.sql.Date(date.getTime()));
@@ -118,7 +91,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public void logFileDependencies(String uuid, List<String> dependencies) {
-        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(INSERT_DEPENDENCIES)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(INSERT_DEPENDENCIES)) {
             for (String dependency : dependencies) {
                 if (dependency != null) {
                     preparedStatement.setString(1, uuid);
@@ -141,7 +114,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     private String getValue(String file, String origin, String query, String columnName) {
-        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(query)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setString(1, file);
             preparedStatement.setString(2, origin);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -157,7 +130,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     private boolean checkValue(String query, String filename, String origin) {
-        try (PreparedStatement preparedStatement = connector.getConnection().prepareStatement(query)) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             preparedStatement.setString(1, filename);
             preparedStatement.setString(2, origin);
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -169,12 +142,14 @@ public class CgmesAssemblingLogger implements AutoCloseable {
     }
 
     public void close() {
-        if (connector != null) {
-            connector.close();
+        try {
+            connection.close();
+        } catch (SQLException e) {
+            LOGGER.error("Error closing connection", e);
         }
     }
 
-    public JdbcConnector getConnector() {
-        return connector;
+    public Connection getConnection() {
+        return connection;
     }
 }
