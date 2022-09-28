@@ -1,1 +1,3 @@
-dbName: cgmes_assembling
+powsybl-ws:
+  database:
+    name: cgmes_assembling
