@@ -1,0 +1,3 @@
+powsybl-ws:
+  database:
+    host: localhost
