@@ -12,7 +12,6 @@
     <!--
         suppress unreadable huge logs..
     -->
-    <logger name="com.datastax.driver.core" level="warn"/>
     <logger name="org.apache.commons.vfs2.provider" level="warn"/>
 
 </configuration>
