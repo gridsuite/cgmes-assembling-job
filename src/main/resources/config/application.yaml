@@ -1,3 +1,8 @@
 powsybl-ws:
   database:
     name: cgmes_assembling
+
+logging:
+  level:
+    # suppress unreadable huge logs..
+    org.apache.commons.vfs2.provider: warn
