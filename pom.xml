@@ -42,7 +42,7 @@
     </developers>
 
     <properties>
-        <powsybl-ws-dependencies.version>2.9.0</powsybl-ws-dependencies.version>
+        <gridsuite-dependencies.version>29-SNAPSHOT</gridsuite-dependencies.version>
 
         <jcraft.version>0.1.55</jcraft.version>
         <fake.sftp.server.version>2.0.1</fake.sftp.server.version>
@@ -85,9 +85,9 @@
 
             <!-- imports -->
             <dependency>
-                <groupId>com.powsybl</groupId>
-                <artifactId>powsybl-ws-dependencies</artifactId>
-                <version>${powsybl-ws-dependencies.version}</version>
+                <groupId>org.gridsuite</groupId>
+                <artifactId>gridsuite-dependencies</artifactId>
+                <version>${gridsuite-dependencies.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
