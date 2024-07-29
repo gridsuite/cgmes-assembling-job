@@ -7,6 +7,7 @@
 package org.gridsuite.cgmes.assembling.job;
 
 import com.powsybl.cgmes.model.FullModel;
+import com.powsybl.commons.PowsyblException;
 import com.powsybl.commons.config.ModuleConfig;
 import com.powsybl.commons.config.PlatformConfig;
 import org.slf4j.Logger;
@@ -52,9 +53,9 @@ public class ProfilesAcquisitionJob implements CommandLineRunner {
 
         PlatformConfig platformConfig = PlatformConfig.defaultConfig();
 
-        ModuleConfig moduleConfigAcquisitionServer = platformConfig.getModuleConfig("acquisition-server");
-        ModuleConfig moduleConfigCaseServer = platformConfig.getModuleConfig("case-server");
-        ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getModuleConfig("cgmes-boundary-server");
+        ModuleConfig moduleConfigAcquisitionServer = platformConfig.getOptionalModuleConfig("acquisition-server").orElseThrow(() -> new PowsyblException("Module acquisition-server not found !!"));
+        ModuleConfig moduleConfigCaseServer = platformConfig.getOptionalModuleConfig("case-server").orElseThrow(() -> new PowsyblException("Module case-server not found !!"));
+        ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getOptionalModuleConfig("cgmes-boundary-server").orElseThrow(() -> new PowsyblException("Module cgmes-boundary-server not found !!"));
 
         final CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester(moduleConfigCaseServer.getStringProperty("url"));
         final CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester(moduleConfigCgmesBoundaryServer.getStringProperty("url"));
