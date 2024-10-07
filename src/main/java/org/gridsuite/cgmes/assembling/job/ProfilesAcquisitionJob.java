@@ -10,11 +10,13 @@ import com.powsybl.cgmes.model.FullModel;
 import com.powsybl.commons.PowsyblException;
 import com.powsybl.commons.config.ModuleConfig;
 import com.powsybl.commons.config.PlatformConfig;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.lang.Nullable;
 
 import javax.sql.DataSource;
 import java.io.InputStreamReader;
@@ -27,18 +29,13 @@ import java.util.zip.ZipInputStream;
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
-
-@SuppressWarnings({"checkstyle:HideUtilityClassConstructor"})
 @SpringBootApplication
+@AllArgsConstructor
 public class ProfilesAcquisitionJob implements CommandLineRunner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProfilesAcquisitionJob.class);
 
-    private DataSource dataSource;
-
-    public ProfilesAcquisitionJob(DataSource dataSource) {
-        this.dataSource = dataSource;
-    }
+    private final DataSource dataSource;
 
     public static void main(String... args) {
         SpringApplication.run(ProfilesAcquisitionJob.class, args);
@@ -49,25 +46,33 @@ public class ProfilesAcquisitionJob implements CommandLineRunner {
         handle(null);
     }
 
-    public void handle(Boolean dependenciesStrictMode) {
+    private void handle(@Nullable final Boolean dependenciesStrictMode) {
+        final PlatformConfig platformConfig = PlatformConfig.defaultConfig();
+        final ModuleConfig moduleConfigAcquisitionServer = platformConfig.getOptionalModuleConfig("acquisition-server").orElseThrow(() -> new PowsyblException("Module acquisition-server not found !!"));
+        final ModuleConfig moduleConfigCaseServer = platformConfig.getOptionalModuleConfig("case-server").orElseThrow(() -> new PowsyblException("Module case-server not found !!"));
+        final ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getOptionalModuleConfig("cgmes-boundary-server").orElseThrow(() -> new PowsyblException("Module cgmes-boundary-server not found !!"));
+        handle(
+            Optional.ofNullable(dependenciesStrictMode).orElseGet(() -> moduleConfigAcquisitionServer.getBooleanProperty("dependencies-strict-mode", false)),
+            moduleConfigCaseServer.getStringProperty("url"),
+            moduleConfigCgmesBoundaryServer.getStringProperty("url"),
+            moduleConfigAcquisitionServer.getStringProperty("url"),
+            moduleConfigAcquisitionServer.getStringProperty("username"),
+            moduleConfigAcquisitionServer.getStringProperty("password"),
+            moduleConfigAcquisitionServer.getStringProperty("cases-directory"),
+            moduleConfigAcquisitionServer.getStringProperty("label")
+        );
+    }
 
-        PlatformConfig platformConfig = PlatformConfig.defaultConfig();
+    public void handle(final boolean dependenciesStrictMode, final String caseServerUrl, final String cgmesBoundaryServerUrl,
+                       final String acquisitionServerUsername, final String acquisitionServerPassword, final String acquisitionServerUrl,
+                       final String casesDirectory, final String acquisitionServerLabel) {
 
-        ModuleConfig moduleConfigAcquisitionServer = platformConfig.getOptionalModuleConfig("acquisition-server").orElseThrow(() -> new PowsyblException("Module acquisition-server not found !!"));
-        ModuleConfig moduleConfigCaseServer = platformConfig.getOptionalModuleConfig("case-server").orElseThrow(() -> new PowsyblException("Module case-server not found !!"));
-        ModuleConfig moduleConfigCgmesBoundaryServer = platformConfig.getOptionalModuleConfig("cgmes-boundary-server").orElseThrow(() -> new PowsyblException("Module cgmes-boundary-server not found !!"));
+        final CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester(caseServerUrl);
+        final CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester(cgmesBoundaryServerUrl);
 
-        final CaseImportServiceRequester caseImportServiceRequester = new CaseImportServiceRequester(moduleConfigCaseServer.getStringProperty("url"));
-        final CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester(moduleConfigCgmesBoundaryServer.getStringProperty("url"));
-
-        try (AcquisitionServer acquisitionServer = new AcquisitionServer(moduleConfigAcquisitionServer.getStringProperty("url"),
-                                                                         moduleConfigAcquisitionServer.getStringProperty("username"),
-                                                                         moduleConfigAcquisitionServer.getStringProperty("password"));
-             CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger(dataSource)) {
+        try (final AcquisitionServer acquisitionServer = new AcquisitionServer(acquisitionServerUrl, acquisitionServerUsername, acquisitionServerPassword);
+             final CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger(dataSource)) {
             acquisitionServer.open();
-
-            String casesDirectory = moduleConfigAcquisitionServer.getStringProperty("cases-directory");
-            String acquisitionServerLabel = moduleConfigAcquisitionServer.getStringProperty("label");
 
             // Get list of all tsos and business processes from cgmes boundary server
             Set<String> authorizedTsos = cgmesBoundaryServiceRequester.getTsosList();
@@ -132,10 +137,7 @@ public class ProfilesAcquisitionJob implements CommandLineRunner {
                     // Assembling profiles
                     TransferableFile assembledFile = CgmesUtils.prepareFinalZip(fileInfo.getKey(), availableFileDependencies,
                         missingDependencies, acquisitionServer, cgmesBoundaryServiceRequester,
-                        dependenciesStrictMode == null
-                            ? moduleConfigAcquisitionServer.getBooleanProperty("dependencies-strict-mode", false)
-                            : dependenciesStrictMode,
-                        authorizedTsos, authorizedBusinessProcesses);
+                        dependenciesStrictMode, authorizedTsos, authorizedBusinessProcesses);
 
                     if (assembledFile != null) {
                         // Import assembled file in the case server
@@ -170,7 +172,7 @@ public class ProfilesAcquisitionJob implements CommandLineRunner {
             LOGGER.error("Interruption during assembling");
             Thread.currentThread().interrupt();
         } catch (Exception exc) {
-            LOGGER.error("Job execution error: {}", exc);
+            LOGGER.error("Job execution error", exc);
         }
     }
 }

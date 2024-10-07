@@ -141,6 +141,7 @@ public class CgmesAssemblingLogger implements AutoCloseable {
         }
     }
 
+    @Override
     public void close() {
         try {
             connection.close();
