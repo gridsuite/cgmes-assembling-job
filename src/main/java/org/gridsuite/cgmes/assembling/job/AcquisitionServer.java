@@ -54,7 +54,7 @@ public class AcquisitionServer implements AutoCloseable {
         fsManager.init();
     }
 
-    class FileObjectComparator implements Comparator<FileObject> {
+    private static class FileObjectComparator implements Comparator<FileObject> {
         @Override
         public int compare(FileObject fo1, FileObject fo2) {
             if (fo1 == fo2) {
@@ -102,6 +102,7 @@ public class AcquisitionServer implements AutoCloseable {
         return new TransferableFile(fileName, file.getContent().getByteArray());
     }
 
+    @Override
     public void close() throws IOException {
         fsManager.close();
     }
