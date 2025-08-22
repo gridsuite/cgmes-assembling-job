@@ -45,9 +45,9 @@
         <gridsuite-dependencies.version>39.0.0</gridsuite-dependencies.version>
 
         <jcraft.version>0.1.55</jcraft.version>
-        <fake.sftp.server.version>2.0.1</fake.sftp.server.version>
+        <fake.sftp.server.version>2.0.0</fake.sftp.server.version>
         <mock.ftp.server.version>2.7.1</mock.ftp.server.version>
-        <mockserver.version>5.10.0</mockserver.version>
+        <mockserver.version>5.15.0</mockserver.version>
         <org.json.version>20200518</org.json.version>
         <apache.commons.vfs2.version>2.6.0</apache.commons.vfs2.version>
         <commons.net.version>3.7</commons.net.version>
@@ -112,7 +112,7 @@
             </dependency>
             <dependency>
                 <groupId>com.github.stefanbirkner</groupId>
-                <artifactId>fake-sftp-server-rule</artifactId>
+                <artifactId>fake-sftp-server-lambda</artifactId>
                 <version>${fake.sftp.server.version}</version>
             </dependency>
             <dependency>
@@ -122,7 +122,7 @@
             </dependency>
             <dependency>
                 <groupId>org.mock-server</groupId>
-                <artifactId>mockserver-junit-rule</artifactId>
+                <artifactId>mockserver-junit-jupiter</artifactId>
                 <version>${mockserver.version}</version>
             </dependency>
             <dependency>
@@ -218,22 +218,12 @@
         </dependency>
         <dependency>
             <groupId>com.github.stefanbirkner</groupId>
-            <artifactId>fake-sftp-server-rule</artifactId>
+            <artifactId>fake-sftp-server-lambda</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.powsybl</groupId>
             <artifactId>powsybl-config-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.vintage</groupId>
-            <artifactId>junit-vintage-engine</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -243,7 +233,7 @@
         </dependency>
         <dependency>
             <groupId>org.mock-server</groupId>
-            <artifactId>mockserver-junit-rule</artifactId>
+            <artifactId>mockserver-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
