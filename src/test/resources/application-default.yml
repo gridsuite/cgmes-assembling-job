@@ -3,3 +3,7 @@ powsybl-ws:
     vendor: h2:mem
     query: ;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     hostPort: ":"
+#We don't want to start a web server
+spring:
+  main:
+    web-application-type: none
