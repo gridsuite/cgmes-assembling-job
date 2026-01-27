@@ -12,7 +12,7 @@ on:
 
 jobs:
   run-release:
-    uses: powsybl/github-ci/.github/workflows/release-backend-app-generic.yml@39565de6fd7d394ed76fa09e5197ffb1350ff1e6
+    uses: powsybl/github-ci/.github/workflows/release-backend-app-generic.yml@c81718897ef649fcdc685955a094bf724bf7fa9e
     with:
       githubappId: ${{ vars.GRIDSUITE_ACTIONS_APPID }}
       dockerImage: docker.io/gridsuite/cgmes-assembling-job
