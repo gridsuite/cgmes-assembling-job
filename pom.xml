@@ -42,7 +42,7 @@
     </developers>
 
     <properties>
-        <gridsuite-dependencies.version>46.0.0</gridsuite-dependencies.version>
+        <gridsuite-dependencies.version>49.0.0</gridsuite-dependencies.version>
         <jcraft.version>0.1.55</jcraft.version>
         <fake.sftp.server.version>2.0.1</fake.sftp.server.version>
         <mock.ftp.server.version>2.7.1</mock.ftp.server.version>
