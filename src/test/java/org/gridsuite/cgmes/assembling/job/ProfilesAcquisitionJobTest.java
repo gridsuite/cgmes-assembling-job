@@ -133,7 +133,8 @@ public class ProfilesAcquisitionJobTest {
     public void testCgmesBoundaryRequester() {
         CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester("http://localhost:55487/");
 
-        expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}", 200);
+        expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
+                "{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"content1\"}", 200);
         BoundaryInfo res = cgmesBoundaryServiceRequester.getBoundary("urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358");
         assertEquals("titi.xml", res.getFilename());
         assertEquals("content1", new String(res.getBoundary(), UTF_8));
@@ -148,7 +149,9 @@ public class ProfilesAcquisitionJobTest {
     public void testCgmesLastBoundariesRequester() {
         CgmesBoundaryServiceRequester cgmesBoundaryServiceRequester = new CgmesBoundaryServiceRequester("http://localhost:55487/");
 
-        expectRequestBoundary("/v1/boundaries/last", "[{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:11111111-2222-3333-4444-555555555555\",\"boundary\":\"content\"},{\"filename\":\"tutu.xml\",\"id\":\"urn:uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\"boundary\":\"content2\"}]", 200);
+        expectRequestBoundary("/v1/boundaries/last",
+                "[{\"filename\":\"titi.xml\",\"id\":\"urn:uuid:11111111-2222-3333-4444-555555555555\",\"boundary\":\"content\"},{\"filename\":\"tutu.xml\","
+                        + "\"id\":\"urn:uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\"boundary\":\"content2\"}]", 200);
         List<BoundaryInfo> res = cgmesBoundaryServiceRequester.getLastBoundaries();
         assertEquals(2, res.size());
         assertEquals("titi.xml", res.get(0).getFilename());
@@ -220,7 +223,7 @@ public class ProfilesAcquisitionJobTest {
         try (InputStream isSSH = getClass().getResourceAsStream("/20191106T0930Z_1D_XX_SSH_001.zip");
              InputStream isSV = getClass().getResourceAsStream("/20191106T0930Z_1D_XX_SV_001.zip");
              BufferedInputStream bisSSH = new BufferedInputStream(isSSH);
-             BufferedInputStream bisSV = new BufferedInputStream(isSV);) {
+             BufferedInputStream bisSV = new BufferedInputStream(isSV)) {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SSH_001.zip", bisSSH.readAllBytes());
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SV_001.zip", bisSV.readAllBytes());
         }
@@ -234,7 +237,8 @@ public class ProfilesAcquisitionJobTest {
         //
         expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
         expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
-        expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
+        expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
+                "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
         expectRequestBoundary("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01", null, 500);
         ProfilesAcquisitionJob.main(args);
         try (CgmesAssemblingLogger cgmesAssemblingLogger = new CgmesAssemblingLogger(dataSource)) {
@@ -247,7 +251,8 @@ public class ProfilesAcquisitionJobTest {
             mockServer.getClient().clear(request());
             expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
             expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
+                    "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
             expectRequestBoundary("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01", null, 500);
             ProfilesAcquisitionJob.main(args);
             assertFalse(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
@@ -255,16 +260,18 @@ public class ProfilesAcquisitionJobTest {
             // One new file on SFTP server (EQ), one new case will be handled, but still no import will be requested (missing dependencies)
             //
             try (InputStream isEQ = getClass().getResourceAsStream("/20191106T0930Z__XX_EQ_001.zip");
-                 BufferedInputStream bisEQ = new BufferedInputStream(isEQ);) {
+                 BufferedInputStream bisEQ = new BufferedInputStream(isEQ)) {
                 SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z__XX_EQ_001.zip", bisEQ.readAllBytes());
             }
 
             mockServer.getClient().clear(request());
             expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
             expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
+                    "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
             expectRequestBoundary("/v1/boundaries/urn:uuid:25b861c6-3e06-4fa1-bb56-592330202c01", null, 500);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71",
+                    "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
             ProfilesAcquisitionJob.main(args);
             assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z__XX_EQ_001.zip", "my_sftp_server"));
             assertFalse(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
@@ -272,15 +279,17 @@ public class ProfilesAcquisitionJobTest {
             // One new file on SFTP server (TP), one case import requested
             //
             try (InputStream isTP = getClass().getResourceAsStream("/20191106T0930Z_1D_XX_TP_001.zip");
-                 BufferedInputStream bisTP = new BufferedInputStream(isTP);) {
+                 BufferedInputStream bisTP = new BufferedInputStream(isTP)) {
                 SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_TP_001.zip", bisTP.readAllBytes());
             }
 
             mockServer.getClient().clear(request());
             expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
             expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
+                    "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71",
+                    "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
             ProfilesAcquisitionJob.main(args);
             assertTrue(cgmesAssemblingLogger.isHandledFile("20191106T0930Z_1D_XX_TP_001.zip", "my_sftp_server"));
             assertFalse(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
@@ -289,7 +298,8 @@ public class ProfilesAcquisitionJobTest {
             mockServer.getClient().clear(request());
             expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
             expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
+                    "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
             expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", null, 500);
             expectRequestCase("/v1/cases/public", 200);
             new ProfilesAcquisitionJob(dataSource).handle(Boolean.TRUE);
@@ -299,8 +309,10 @@ public class ProfilesAcquisitionJobTest {
             mockServer.getClient().clear(request());
             expectRequestTsos("/v1/tsos", "[\"XX\"]", 200);
             expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
-            expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358",
+                    "{\"filename\":\"referenced_eqbd.xml\",\"id\":\"urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358\",\"boundary\":\"" + boundary1Content + "\"}", 200);
+            expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71",
+                    "{\"filename\":\"referenced_tpbd.xml\",\"id\":\"urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71\",\"boundary\":\"" + boundary2Content + "\"}", 200);
             expectRequestCase("/v1/cases/public", 200);
             ProfilesAcquisitionJob.main(args);
             assertTrue(cgmesAssemblingLogger.isImportedFile("20191106T0930Z_1D_XX_SV_001.zip", "my_sftp_server"));
@@ -319,7 +331,7 @@ public class ProfilesAcquisitionJobTest {
              BufferedInputStream bisSSH = new BufferedInputStream(isSSH);
              BufferedInputStream bisSV = new BufferedInputStream(isSV);
              BufferedInputStream bisTP = new BufferedInputStream(isTP);
-             BufferedInputStream bisEQ = new BufferedInputStream(isEQ);) {
+             BufferedInputStream bisEQ = new BufferedInputStream(isEQ)) {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SSH_001.zip", bisSSH.readAllBytes());
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SV_001.zip", bisSV.readAllBytes());
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_TP_001.zip", bisTP.readAllBytes());
@@ -360,7 +372,9 @@ public class ProfilesAcquisitionJobTest {
             expectRequestBusinessProcesses("/v1/business-processes", "[\"1D\"]", 200);
             expectRequestBoundary("/v1/boundaries/urn:uuid:f1582c44-d9e2-4ea0-afdc-dba189ab4358", null, 500);
             expectRequestBoundary("/v1/boundaries/urn:uuid:3e3f7738-aab9-4284-a965-71d5cd151f71", null, 500);
-            expectRequestBoundary("/v1/boundaries/last", "[{\"filename\":\"last_eqbd.xml\",\"id\":\"urn:uuid:11111111-2222-3333-4444-555555555555\",\"boundary\":\"" + lastBoundary1Content + "\"},{\"filename\":\"last_tpbd.xml\",\"id\":\"urn:uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\"boundary\":\"" + lastBoundary2Content + "\"}]", 200);
+            expectRequestBoundary("/v1/boundaries/last",
+                    "[{\"filename\":\"last_eqbd.xml\",\"id\":\"urn:uuid:11111111-2222-3333-4444-555555555555\",\"boundary\":\"" + lastBoundary1Content
+                            + "\"},{\"filename\":\"last_tpbd.xml\",\"id\":\"urn:uuid:aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\"boundary\":\"" + lastBoundary2Content + "\"}]", 200);
             expectRequestCase("/v1/cases/public", 200);
             ProfilesAcquisitionJob.main(args);
 
@@ -380,7 +394,7 @@ public class ProfilesAcquisitionJobTest {
              BufferedInputStream bisSV = new BufferedInputStream(isSV);
              BufferedInputStream bisSSH = new BufferedInputStream(isSSH);
              BufferedInputStream bisTP = new BufferedInputStream(isTP);
-             BufferedInputStream bisEQ = new BufferedInputStream(isEQ);) {
+             BufferedInputStream bisEQ = new BufferedInputStream(isEQ)) {
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_TP_001.zip", bisTP.readAllBytes());
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z__XX_EQ_001.zip", bisEQ.readAllBytes());
             SFTP_SERVER_RULE.putFile("/cases/20191106T0930Z_1D_XX_SV_001.zip", bisSV.readAllBytes());

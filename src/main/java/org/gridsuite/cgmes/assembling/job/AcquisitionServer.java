@@ -60,8 +60,8 @@ public class AcquisitionServer implements AutoCloseable {
             if (fo1 == fo2) {
                 return 0;
             } else {
-                try (final FileContent fo1Content = fo1.getContent();
-                     final FileContent fo2Content = fo2.getContent()) {
+                try (FileContent fo1Content = fo1.getContent();
+                     FileContent fo2Content = fo2.getContent()) {
                     return Long.compare(fo1Content.getLastModifiedTime(), fo2Content.getLastModifiedTime());
                 } catch (FileSystemException e) {
                     // if error when getting content, order by name
