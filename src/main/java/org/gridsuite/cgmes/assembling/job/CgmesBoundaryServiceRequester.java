@@ -8,10 +8,9 @@ package org.gridsuite.cgmes.assembling.job;
 
 import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.json.JSONObject;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
