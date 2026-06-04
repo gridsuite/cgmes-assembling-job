@@ -6,12 +6,11 @@
  */
 package org.gridsuite.cgmes.assembling.job;
 
-import com.powsybl.ws.commons.SecuredZipInputStream;
 import com.powsybl.commons.compress.ZipPackager;
+import com.powsybl.ws.commons.SecuredZipInputStream;
 import org.gridsuite.cgmes.assembling.job.dto.BoundaryInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,7 +37,7 @@ public final class CgmesUtils {
     private CgmesUtils() {
     }
 
-  /*The file should have the following structure:
+    /*The file should have the following structure:
     <effectiveDateTime>_<businessProcess>_<sourcingActor>_SV_<fileVersion>.zip
     <effectiveDateTime>_<businessProcess>_<sourcingActor>_SSH_<fileVersion>.zip
     <effectiveDateTime>_<businessProcess>_<sourcingActor>_TP_<fileVersion>.zip
@@ -55,7 +54,7 @@ public final class CgmesUtils {
         if (filename.split(DOT_REGEX).length == 2) {
             String base = filename.split(DOT_REGEX)[0];
             String ext = filename.split(DOT_REGEX)[1];
-            if (ext.equals("zip") && base.split(UNDERSCORE_REGEX).length == 5) {
+            if ("zip".equals(ext) && base.split(UNDERSCORE_REGEX).length == 5) {
                 String[] parts = base.split(UNDERSCORE_REGEX);
                 if (isValidModelPart(parts[3]) && isValidBusinessProcess(parts[1], parts[3], authorizedBusinessProcesses) &&
                     isValidSourcingActor(parts[2], authorizedSourcingActors) && isValidModelVersion(parts[4])) {
@@ -122,7 +121,8 @@ public final class CgmesUtils {
                                                    boolean dependenciesStrictMode,
                                                    Set<String> authorizedTsos, Set<String> authorizedBusinessProcesses) throws IOException {
         // test if all needed individual profiles are available
-        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(d -> CgmesUtils.getValidProfileFileName(d, authorizedTsos, authorizedBusinessProcesses)).collect(Collectors.toSet());
+        Set<String> availableProfiles = availableFileDependencies.keySet().stream().map(d -> CgmesUtils.getValidProfileFileName(d, authorizedTsos, authorizedBusinessProcesses)).collect(
+                Collectors.toSet());
         if (!availableProfiles.equals(NEEDED_PROFILES)) {
             return null;
         }
